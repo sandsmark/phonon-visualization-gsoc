@@ -53,7 +53,7 @@ private:
     static void closePort(xine_audio_port_t *, xine_stream_t *);
     static void putBufferCallback(xine_audio_port_t *, audio_buffer_t *buf, xine_stream_t *stream);
 
-    static QMap <xine_audio_port_t*, AudioDataOutputXT*> objectMapper;
+    static QMap <xine_audio_port_t*, AudioDataOutputXT*> &objectMapper;
 };
 
 

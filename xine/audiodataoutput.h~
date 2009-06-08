@@ -39,8 +39,8 @@ class AudioDataOutput : public AbstractAudioOutput
         AudioDataOutput(QObject *parent);
         ~AudioDataOutput();
 
-        friend class AudioDataOutputXT;
-        
+        void putBufferCB(xine_audio_port_t *, audio_buffer_t *buf, xine_stream_t *stream);
+
     public slots:
         Phonon::Experimental::AudioDataOutput::Format format() const;
         int dataSize() const;
