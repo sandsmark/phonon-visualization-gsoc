@@ -1,5 +1,7 @@
 /*  This file is part of the KDE project
+    Copyright (C) 2004 Max Howell <max.howell@methylblue.com>
     Copyright (C) 2006 Tim Beaulen <tbscope@gmail.com>
+    Copyright (C) 2009 Martin Sandsmark <sandsmark@samfundet.no>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -23,6 +25,7 @@
 #include "abstractaudiooutput.h"
 #include <QVector>
 #include <phonon/experimental/audiodataoutput.h>
+#include <xine/audio_out.h>
 
 namespace Phonon
 {
@@ -36,12 +39,16 @@ class AudioDataOutput : public AbstractAudioOutput
         AudioDataOutput(QObject *parent);
         ~AudioDataOutput();
 
+        void putBufferCB(xine_audio_port_t *, audio_buffer_t *buf, xine_stream_t *stream);
+
     public slots:
         Phonon::Experimental::AudioDataOutput::Format format() const;
         int dataSize() const;
         int sampleRate() const;
+        int channels() const { return m_channels; }
         void setFormat(Phonon::Experimental::AudioDataOutput::Format format);
         void setDataSize(int size);
+        void setChannels(int channels) { m_channels = channels; }
 
     signals:
         void dataReady(const QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<qint16> > &data);
@@ -50,9 +57,10 @@ class AudioDataOutput : public AbstractAudioOutput
 
     private:
         void convertAndEmit(const QVector<float> &buffer);
-
+        
         Phonon::Experimental::AudioDataOutput::Format m_format;
         int m_dataSize;
+        int m_channels;
         QVector<float> m_pendingData;
 };
 

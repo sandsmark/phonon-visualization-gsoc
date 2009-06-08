@@ -1,5 +1,7 @@
 /*  This file is part of the KDE project
+    Copyright (C) 2004 Max Howell <max.howell@methylblue.com>
     Copyright (C) 2006 Tim Beaulen <tbscope@gmail.com>
+    Copyright (C) 2009 Martin Sandsmark <sandsmark@samfundet.no>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -23,17 +25,39 @@
 #include <QMap>
 #include "sourcenode.h"
 
+extern "C" {
+    #define XINE_ENGINE_INTERNAL
+    #define this __this__
+    #include <xine.h>
+    #include <xine/post.h>
+    #include <xine/xine_internal.h>
+    #undef this
+    #undef XINE_ENGINE_INTERNAL
+}
+
 namespace Phonon
 {
 namespace Xine
 {
 class AudioDataOutputXT : public SinkNodeXT
 {
+public:
+    AudioDataOutputXT(AudioDataOutput *output) { m_output = output; }
+
+private:
     void rewireTo(SourceNodeXT *);
+
+    static int openPort(xine_audio_port_t*, xine_stream_t*, uint32_t, uint32_t, int);
+    static void closePort(xine_audio_port_t *, xine_stream_t *);
+    static void putBufferCallback(xine_audio_port_t *, audio_buffer_t *buf, xine_stream_t *stream);
+    
+
+private:
+    AudioDataOutput *m_output;
 };
 
 AudioDataOutput::AudioDataOutput(QObject *parent)
-    : AbstractAudioOutput(new AudioDataOutputXT, parent)
+    : AbstractAudioOutput(new AudioDataOutputXT(this), parent)
     , m_format(Phonon::Experimental::AudioDataOutput::FloatFormat)
     , m_dataSize(0)
 {
@@ -45,9 +69,69 @@ AudioDataOutput::~AudioDataOutput()
 
 void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 {
-    Q_UNUSED(source);
+    post_plugin_t *post_plugin = (post_plugin_t*)xine_xmalloc(sizeof(post_plugin_t));
+    xine_audio_port_s *audioPort = (xine_audio_port_s*)xine_xmalloc(sizeof(xine_audio_port_s));// = source->audioOutputPort(); //xine_open_audio_driver(m_xine, XineCfg::outputPlugin().local8Bit(), NULL);
+
+    if (xine_post_wire_audio_port(source->audioOutputPort(), audioPort))
+    {
+        post_in_t         *input;
+        post_out_t        *output;
+        post_audio_port_t *port;
+        
+        _x_post_init(post_plugin, 1, 0);
+        
+        port = _x_post_intercept_audio_port(post_plugin, audioPort, &input, &output);
+        port->new_port.open       = openPort;
+        port->new_port.close      = closePort;
+        port->new_port.put_buffer = putBufferCallback;
+        
+        post_plugin->xine_post.audio_input[0] = &port->new_port;
+        post_plugin->xine_post.type = PLUGIN_POST;
+        
+        //post_plugin->dispose = m_output->~AudioDataOutput; //meh TODO
+    }
+    
+    /* code is straight from xine_init_post()
+    can't use that function as it only dlopens the plugins
+    and our plugin is statically linked in */
+    
+    post_plugin->running_ticket = (*m_xine).port_ticket;
+    post_plugin->xine = m_xine;
 
     //xine_post_wire_audio_port(source->outputPort(), m_audioPort);
+}
+
+int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stream, uint32_t bits, uint32_t rate, int mode )
+{
+    post_audio_port_t *port = (post_audio_port_t*)port_gen;
+    
+    _x_post_rewire( (post_plugin_t*)port->post );
+    _x_post_inc_usage( port );
+    
+    port->stream = stream;
+    port->bits = bits;
+    port->rate = rate;
+    port->mode = mode;
+    
+    //m_output->setChannels(_x_ao_mode2channels(mode));
+    
+    return port->original_port->open( port->original_port, stream, bits, rate, mode );
+}
+void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *stream)
+{
+    post_audio_port_t *port = (post_audio_port_t*)port_gen;
+    
+    port->stream = NULL;
+    port->original_port->close( port->original_port, stream );
+    
+    _x_post_dec_usage( port );
+
+    //TODO: empty buffers
+}
+
+void AudioDataOutputXT::putBufferCallback(xine_audio_port_t *, audio_buffer_t *buf, xine_stream_t *stream)
+{
+    
 }
 
 Phonon::Experimental::AudioDataOutput::Format AudioDataOutput::format() const
