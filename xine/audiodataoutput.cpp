@@ -26,13 +26,14 @@
 #include "sourcenode.h"
 
 extern "C" {
-    #define XINE_ENGINE_INTERNAL
-    #define this __this__
+    
+    #define this __this__ //HACK
+    #define XINE_ENGINE_INTERNAL //we need the port_ticket
     #include <xine.h>
     #include <xine/post.h>
     #include <xine/xine_internal.h>
-    #undef this
     #undef XINE_ENGINE_INTERNAL
+    #undef this
 }
 
 namespace Phonon
@@ -56,6 +57,7 @@ private:
     static QMap <xine_audio_port_t*, AudioDataOutputXT*> objectMapper;
 };
 
+QMap <xine_audio_port_t*, AudioDataOutputXT*> Phonon::Xine::AudioDataOutputXT::objectMapper;
 
 AudioDataOutput::AudioDataOutput(QObject *parent)
     : AbstractAudioOutput(new AudioDataOutputXT(this), parent)
