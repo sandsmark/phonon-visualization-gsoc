@@ -48,7 +48,7 @@ class AudioDataOutput : public AbstractAudioOutput
         int channels() const { return m_channels; }
         void setFormat(Phonon::Experimental::AudioDataOutput::Format format);
         void setDataSize(int size);
-        void setChannels(int channels) { m_channels = channels; }
+        void setChannels(int channels) { m_channels = channels; m_pendingData.clear(); }
 
     signals:
         void dataReady(const QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<qint16> > &data);
@@ -56,12 +56,12 @@ class AudioDataOutput : public AbstractAudioOutput
         void endOfMedia(int remainingSamples);
 
     private:
-        void convertAndEmit(QVector< qint16 >& buffer);
+        void convertAndEmit(QVector< qint16 >& left);
         
         Phonon::Experimental::AudioDataOutput::Format m_format;
         int m_dataSize;
         int m_channels;
-        QVector<float> m_pendingData;
+        QVector<qint16> m_pendingData;
 };
 
 }} //namespace Phonon::Xine

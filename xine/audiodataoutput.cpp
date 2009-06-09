@@ -27,7 +27,7 @@
 
 extern "C" {
     
-    #define this __this__ //HACK
+    #define this __this__ //HACK, yeah!
     #define XINE_ENGINE_INTERNAL //we need the port_ticket
     #include <xine.h>
     #include <xine/post.h>
@@ -52,23 +52,14 @@ private:
 
     static int openPort(xine_audio_port_t*, xine_stream_t*, uint32_t, uint32_t, int);
     static void closePort(xine_audio_port_t *, xine_stream_t *);
-    static void putBufferCallback(xine_audio_port_t *, audio_buffer_t *buf, xine_stream_t *stream);
+    static void putBufferCallback(xine_audio_port_s*, audio_buffer_s* buf, xine_stream_s* stream);
 
-    static QMap <xine_audio_port_t*, AudioDataOutputXT*> objectMapper;
+    static QMap <xine_audio_port_t*, AudioDataOutputXT*> objectMapper; //HACK hack hack hack...
+
+    int m_channels;
 };
 
 QMap <xine_audio_port_t*, AudioDataOutputXT*> Phonon::Xine::AudioDataOutputXT::objectMapper;
-
-AudioDataOutput::AudioDataOutput(QObject *parent)
-    : AbstractAudioOutput(new AudioDataOutputXT(this), parent)
-    , m_format(Phonon::Experimental::AudioDataOutput::FloatFormat)
-    , m_dataSize(0)
-{
-}
-
-AudioDataOutput::~AudioDataOutput()
-{
-}
 
 void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 {
@@ -118,7 +109,8 @@ int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stre
     port->rate = rate;
     port->mode = mode;
     
-    //m_output->setChannels(_x_ao_mode2channels(mode));
+    objectMapper[port_gen]->m_channels = _x_ao_mode2channels(mode);
+    objectMapper[port_gen]->m_output->setChannels(objectMapper[port_gen]->m_channels);
     
     return port->original_port->open( port->original_port, stream, bits, rate, mode );
 }
@@ -127,21 +119,35 @@ void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *st
     post_audio_port_t *port = (post_audio_port_t*)port_gen;
     
     port->stream = NULL;
-    port->original_port->close( port->original_port, stream );
+    port->original_port->close(port->original_port, stream);
+
+    objectMapper.remove(port_gen);
     
-    _x_post_dec_usage( port );
+    _x_post_dec_usage(port);
 
     //TODO: empty buffers
 }
 
-void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * audioPort, audio_buffer_t *buf, xine_stream_t *stream)
+void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * audioPort, audio_buffer_t *buf, xine_stream_t*)
 {
-    QVector<qint16> buffer(buf->num_frames);
+    int samples = buf->num_frames * objectMapper[audioPort]->m_channels;
     
-    for (int i=0; i < buf->num_frames; ++i)
+    QVector<qint16> buffer(samples);
+    for (int i=0; i<samples; ++i)
         buffer[i] = buf->mem[i];
     
     objectMapper[audioPort]->m_output->convertAndEmit(buffer);
+}
+
+AudioDataOutput::AudioDataOutput(QObject *parent)
+: AbstractAudioOutput(new AudioDataOutputXT(this), parent)
+, m_format(Phonon::Experimental::AudioDataOutput::FloatFormat)
+, m_dataSize(0)
+{
+}
+
+AudioDataOutput::~AudioDataOutput()
+{
 }
 
 Phonon::Experimental::AudioDataOutput::Format AudioDataOutput::format() const
@@ -175,23 +181,36 @@ typedef QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<qint16> > I
 inline void AudioDataOutput::convertAndEmit(QVector<qint16>& buffer)
 {
     //TODO: support floats
+    m_pendingData += buffer;
 
-    //if (m_format == Phonon::Experimental::AudioDataOutput::FloatFormat) {
-    IntMap map;
-    map.insert(Phonon::Experimental::AudioDataOutput::LeftChannel, buffer);
-    map.insert(Phonon::Experimental::AudioDataOutput::RightChannel, buffer);
-    emit dataReady(map);
-    //}
-    /*else
+    if (m_format == Phonon::Experimental::AudioDataOutput::FloatFormat)
+        return;
+
+    if (m_pendingData.size()/m_channels > 512)
     {
-        IntMap map;
-        QVector<qint16> intBuffer(m_dataSize);
-        for (int i = 0; i < m_dataSize; ++i)
-            intBuffer[i] = static_cast<qint16>(buffer[i] * static_cast<float>(0x7FFF));
-        map.insert(Phonon::Experimental::AudioDataOutput::LeftChannel, intBuffer);
-        map.insert(Phonon::Experimental::AudioDataOutput::RightChannel, intBuffer);
-        emit dataReady(map);
-    }*/
+        if (m_channels==1)
+        {
+            IntMap map;
+            QVector<qint16> data = m_pendingData.mid(0, 512);
+            map.insert(Phonon::Experimental::AudioDataOutput::LeftChannel, data);
+            map.insert(Phonon::Experimental::AudioDataOutput::RightChannel, data);
+            emit dataReady(map);
+        }
+        else if (m_channels==2)
+        {
+            IntMap map;
+            QVector<qint16> left, right, data = m_pendingData.mid(0, 512);
+            for (int i=0, j=0; i<1024; i+=2)
+            {
+                left[j] = m_pendingData[i];
+                right[j] = m_pendingData[i+1];
+                ++j;
+            }
+            map.insert(Phonon::Experimental::AudioDataOutput::LeftChannel, left);
+            map.insert(Phonon::Experimental::AudioDataOutput::RightChannel, right);
+            emit dataReady(map);
+        }
+    }
 }
 
 }} //namespace Phonon::Xine
