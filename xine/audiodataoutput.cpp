@@ -26,7 +26,6 @@
 #include "sourcenode.h"
 
 extern "C" {
-    
     #define this __this__ //HACK, yeah!
     #define XINE_ENGINE_INTERNAL //we need the port_ticket
     #include <xine.h>
