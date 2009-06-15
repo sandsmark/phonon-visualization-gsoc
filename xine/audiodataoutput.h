@@ -22,9 +22,13 @@
 #ifndef Phonon_XINE_AUDIODATAOUTPUT_H
 #define Phonon_XINE_AUDIODATAOUTPUT_H
 
+
+
 #include "abstractaudiooutput.h"
 #include <QVector>
+#include <phonon/experimental/audiodataoutputinterface.h>
 #include <phonon/experimental/audiodataoutput.h>
+#include <phonon/experimental/abstractaudiodataoutput.h>
 #include <xine/audio_out.h>
 
 namespace Phonon
@@ -32,23 +36,34 @@ namespace Phonon
 namespace Xine
 {
 
-class AudioDataOutput : public AbstractAudioOutput
+    class AudioDataOutput : public QObject,
+                            public Phonon::Xine::SinkNode,
+                            //public Phonon::Experimental::AudioDataOutput,
+                            //public Phonon::Experimental::AbstractAudioDataOutput,
+                            public Phonon::Experimental::AudioDataOutputInterface
+                            
 {
     Q_OBJECT
+    Q_INTERFACES(Phonon::Experimental::AudioDataOutputInterface Phonon::Xine::SinkNode)
+
     public:
         AudioDataOutput(QObject *parent);
         ~AudioDataOutput();
 
+        Experimental::AbstractAudioDataOutput *frontendObject() const;
+        void setFrontendObject(Experimental::AbstractAudioDataOutput *);
+
+        MediaStreamTypes inputMediaStreamTypes() const { return Phonon::Xine::Audio; }
+
         friend class AudioDataOutputXT;
-        
+
     public slots:
         Phonon::Experimental::AudioDataOutput::Format format() const;
-        int dataSize() const;
         int sampleRate() const;
         int channels() const { return m_channels; }
-        void setFormat(Phonon::Experimental::AudioDataOutput::Format format);
-        void setDataSize(int size);
         void setChannels(int channels) { m_channels = channels; m_pendingData.clear(); }
+        int dataSize() { return m_dataSize; }
+        void setDataSize(int ds) { m_dataSize = ds; }
 
     signals:
         void dataReady(const QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<qint16> > &data);
@@ -56,12 +71,13 @@ class AudioDataOutput : public AbstractAudioOutput
         void endOfMedia(int remainingSamples);
 
     private:
-        void convertAndEmit(QVector< qint16 >& left);
-        
-        Phonon::Experimental::AudioDataOutput::Format m_format;
-        int m_dataSize;
+        void packetReady(QVector< qint16 > buffer);
+
+        Experimental::AudioDataOutput::Format m_format;
         int m_channels;
+        int m_dataSize;
         QVector<qint16> m_pendingData;
+        Experimental::AbstractAudioDataOutput *m_frontend;
 };
 
 }} //namespace Phonon::Xine
