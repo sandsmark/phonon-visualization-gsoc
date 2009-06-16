@@ -151,7 +151,7 @@ QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const
         return new VolumeFaderEffect(parent);
     case AudioOutputClass:
         return new AudioOutput(parent);
-    case Phonon::Experimental::BackendInterface::AudioDataOutputClass:
+    case AudioDataOutputClass:
         return new AudioDataOutput(parent);
     case VisualizationClass:
         return new Visualization(parent);

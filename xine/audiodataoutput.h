@@ -26,9 +26,9 @@
 
 #include "abstractaudiooutput.h"
 #include <QVector>
-#include <phonon/experimental/audiodataoutputinterface.h>
-#include <phonon/experimental/audiodataoutput.h>
-#include <phonon/experimental/abstractaudiodataoutput.h>
+#include <phonon/audiodataoutputinterface.h>
+#include <phonon/audiodataoutput.h>
+//#include <phonon/abstractaudiodataoutput.h>
 #include <xine/audio_out.h>
 
 namespace Phonon
@@ -38,27 +38,27 @@ namespace Xine
 
     class AudioDataOutput : public QObject,
                             public Phonon::Xine::SinkNode,
-                            //public Phonon::Experimental::AudioDataOutput,
-                            //public Phonon::Experimental::AbstractAudioDataOutput,
-                            public Phonon::Experimental::AudioDataOutputInterface
-                            
+                            //public Phonon::AudioDataOutput,
+                            //public Phonon::AbstractAudioDataOutput,
+                            public Phonon::AudioDataOutputInterface
+
 {
     Q_OBJECT
-    Q_INTERFACES(Phonon::Experimental::AudioDataOutputInterface Phonon::Xine::SinkNode)
+    Q_INTERFACES(Phonon::AudioDataOutputInterface Phonon::Xine::SinkNode)
 
     public:
         AudioDataOutput(QObject *parent);
         ~AudioDataOutput();
 
-        Experimental::AbstractAudioDataOutput *frontendObject() const;
-        void setFrontendObject(Experimental::AbstractAudioDataOutput *);
+        Phonon::AudioDataOutput *frontendObject() const;
+        void setFrontendObject(Phonon::AudioDataOutput *);
 
         MediaStreamTypes inputMediaStreamTypes() const { return Phonon::Xine::Audio; }
 
         friend class AudioDataOutputXT;
 
     public slots:
-        Phonon::Experimental::AudioDataOutput::Format format() const;
+        Phonon::AudioDataOutput::Format format() const;
         int sampleRate() const;
         int channels() const { return m_channels; }
         void setChannels(int channels) { m_channels = channels; m_pendingData.clear(); }
@@ -66,18 +66,18 @@ namespace Xine
         void setDataSize(int ds) { m_dataSize = ds; }
 
     signals:
-        void dataReady(const QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<qint16> > &data);
-        void dataReady(const QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<float> > &data);
+        void dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > &data);
+        void dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<float> > &data);
         void endOfMedia(int remainingSamples);
 
     private:
         void packetReady(QVector< qint16 > buffer);
 
-        Experimental::AudioDataOutput::Format m_format;
+        Phonon::AudioDataOutput::Format m_format;
         int m_channels;
         int m_dataSize;
         QVector<qint16> m_pendingData;
-        Experimental::AbstractAudioDataOutput *m_frontend;
+        Phonon::AudioDataOutput *m_frontend;
 };
 
 }} //namespace Phonon::Xine

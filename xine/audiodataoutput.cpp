@@ -140,7 +140,7 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * audioPort, audio_b
 
 AudioDataOutput::AudioDataOutput(QObject *)
 : SinkNode(new AudioDataOutputXT(this))
-, m_format(Phonon::Experimental::AudioDataOutput::IntegerFormat)
+, m_format(Phonon::AudioDataOutput::IntegerFormat)
 {
 }
 
@@ -148,7 +148,7 @@ AudioDataOutput::~AudioDataOutput()
 {
 }
 
-Phonon::Experimental::AudioDataOutput::Format AudioDataOutput::format() const
+Phonon::AudioDataOutput::Format AudioDataOutput::format() const
 {
     return m_format;
 }
@@ -158,14 +158,14 @@ int AudioDataOutput::sampleRate() const
     return 44100;
 }
 
-typedef QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<float> > FloatMap;
-typedef QMap<Phonon::Experimental::AudioDataOutput::Channel, QVector<qint16> > IntMap;
+typedef QMap<Phonon::AudioDataOutput::Channel, QVector<float> > FloatMap;
+typedef QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > IntMap;
 
-void AudioDataOutput::setFrontendObject(Experimental::AbstractAudioDataOutput *frontend) {
+void AudioDataOutput::setFrontendObject(Phonon::AudioDataOutput *frontend) {
     m_frontend = frontend;
 }
 
-Experimental::AbstractAudioDataOutput *AudioDataOutput::frontendObject() const {
+Phonon::AudioDataOutput *AudioDataOutput::frontendObject() const {
     return m_frontend;
 }
 
@@ -175,7 +175,7 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
     //TODO: support floats
     m_pendingData += buffer;
 
-    if (m_format == Phonon::Experimental::AudioDataOutput::FloatFormat)
+    if (m_format == Phonon::AudioDataOutput::FloatFormat)
         return;
 
     if (m_pendingData.size() / m_channels > dataSize())
@@ -185,8 +185,8 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
             IntMap map;
             QVector<qint16> data = m_pendingData.mid(0, dataSize());
             m_pendingData.remove(0, dataSize());
-            map.insert(Phonon::Experimental::AudioDataOutput::LeftChannel, data);
-            map.insert(Phonon::Experimental::AudioDataOutput::RightChannel, data);
+            map.insert(Phonon::AudioDataOutput::LeftChannel, data);
+            map.insert(Phonon::AudioDataOutput::RightChannel, data);
             emit dataReady(map);
         }
         else if (m_channels==2)
@@ -200,8 +200,8 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
                 right[j] = m_pendingData[i+1];
                 ++j;
             }
-            map.insert(Phonon::Experimental::AudioDataOutput::LeftChannel, left);
-            map.insert(Phonon::Experimental::AudioDataOutput::RightChannel, right);
+            map.insert(Phonon::AudioDataOutput::LeftChannel, left);
+            map.insert(Phonon::AudioDataOutput::RightChannel, right);
             emit dataReady(map);
         }
     }
