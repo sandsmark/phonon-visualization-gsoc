@@ -15,7 +15,7 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     Lesser General Public License for more details.
 
-    You should have received a copy of the GNU Lesser General Public 
+    You should have received a copy of the GNU Lesser General Public
     License along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 */
@@ -156,6 +156,7 @@ QList<Effect *> Path::effects() const
 bool Path::reconnect(MediaNode *source, MediaNode *sink)
 {
     if (!source || !sink || !source->k_ptr->backendObject() || !sink->k_ptr->backendObject()) {
+        if (!sink->k_ptr->backendObject()) qWarning() << "no backend object in sink";
         return false;
     }
 
@@ -264,7 +265,7 @@ bool Path::disconnect()
             e->k_ptr->removeDestructionHandler(d.data());
         }
         d->effects.clear();
-#endif 
+#endif
 
         if (d->sinkNode) {
             d->sinkNode->k_ptr->removeInputPath(*this);

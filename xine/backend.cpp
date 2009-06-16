@@ -143,6 +143,7 @@ void Backend::returnXineEngine(const XineEngine &e)
 
 QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const QList<QVariant> &args)
 {
+    qWarning() << c;
     switch (c) {
     case MediaObjectClass:
         return new MediaObject(parent);
@@ -181,6 +182,7 @@ QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const
             return 0;
         }
     }
+    qWarning() << Q_FUNC_INFO << " Unhandled class!";
     return 0;
 }
 
@@ -355,8 +357,8 @@ bool Backend::connectNodes(QObject *_source, QObject *_sink)
     SourceNode *source = qobject_cast<SourceNode *>(_source);
     SinkNode *sink = qobject_cast<SinkNode *>(_sink);
     if (!source || !sink) {
-	if (!source) qWarning() << Q_FUNC_INFO << "No source!";
-	else qWarning() << Q_FUNC_INFO << "No sink!";
+        if (!source) qWarning() << Q_FUNC_INFO << "No source!";
+        else qWarning() << Q_FUNC_INFO << "No sink!";
         return false;
     }
     debug() << Q_FUNC_INFO << source->threadSafeObject().data() << "->" << sink->threadSafeObject().data();
