@@ -150,7 +150,7 @@ QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const
         return new VolumeFaderEffect(parent);
     case AudioOutputClass:
         return new AudioOutput(parent);
-    case AudioDataOutputClass:
+    case Phonon::Experimental::BackendInterface::AudioDataOutputClass:
         return new AudioDataOutput(parent);
     case VisualizationClass:
         return new Visualization(parent);
@@ -171,7 +171,7 @@ QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const
         }
     case VideoWidgetClass:
         {
-#ifdef XINEWIDGET_FOUND 
+#ifdef XINEWIDGET_FOUND
             VideoWidget *vw = new VideoWidget(qobject_cast<QWidget *>(parent));
             if (vw->isValid()) {
                 return vw;
