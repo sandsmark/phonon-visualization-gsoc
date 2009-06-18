@@ -24,6 +24,7 @@
 #include <QVector>
 #include <QMap>
 #include "sourcenode.h"
+#include "audiooutput.h"
 
 extern "C" {
     #define this __this__ //HACK, yeah! (Xine uses “this” as a name for certain variables)
@@ -62,8 +63,11 @@ QMap <xine_audio_port_t*, AudioDataOutputXT*> Phonon::Xine::AudioDataOutputXT::o
 
 void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 {
+    AudioOutputXT *ao = source->audioOutput();
+    if (!ao) return;
+
     post_plugin_t *post_plugin = (post_plugin_t*)qMalloc(sizeof(post_plugin_t));
-    xine_audio_port_s *audioPort = (xine_audio_port_s*)qMalloc(sizeof(xine_audio_port_s));// = source->audioOutputPort(); //xine_open_audio_driver(m_xine, XineCfg::outputPlugin().local8Bit(), NULL);
+    xine_audio_port_s *audioPort = ao->audioPort();
 
     if (xine_post_wire_audio_port(source->audioOutputPort(), audioPort))
     {
@@ -129,6 +133,7 @@ void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *st
 
 void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * audioPort, audio_buffer_t *buf, xine_stream_t*)
 {
+    qWarning() << "got called back!";
     int samples = buf->num_frames * objectMapper[audioPort]->m_channels;
 
     QVector<qint16> buffer(samples);
