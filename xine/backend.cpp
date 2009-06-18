@@ -143,7 +143,6 @@ void Backend::returnXineEngine(const XineEngine &e)
 
 QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const QList<QVariant> &args)
 {
-    qWarning() << c;
     switch (c) {
     case MediaObjectClass:
         return new MediaObject(parent);
