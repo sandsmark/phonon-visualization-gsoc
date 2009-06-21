@@ -352,7 +352,7 @@ bool Backend::startConnectionChange(QSet<QObject *> nodes)
 
 bool Backend::connectNodes(QObject *_source, QObject *_sink)
 {
-    debug() << Q_FUNC_INFO << _source << "->" << _sink;
+    debug() << Q_FUNC_INFO << _source->metaObject()->className() << "->" << _sink->metaObject()->className();
     SourceNode *source = qobject_cast<SourceNode *>(_source);
     SinkNode *sink = qobject_cast<SinkNode *>(_sink);
     if (!source || !sink) {
