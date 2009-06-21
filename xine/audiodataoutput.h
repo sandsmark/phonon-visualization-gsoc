@@ -62,7 +62,7 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
         AudioDataOutputXT(AudioDataOutput *output);
 
         xine_post_out_t *audioOutputPort() const;
-        
+
         //callback functions
         static int  openPort(xine_audio_port_t*, xine_stream_t*, uint32_t, uint32_t, int);
         static void closePort(xine_audio_port_t *, xine_stream_t *);
@@ -84,13 +84,14 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
 
 class AudioDataOutput : public QObject,
                         public Phonon::Xine::SinkNode,
+                        public Phonon::Xine::SourceNode,
                         public Phonon::AudioDataOutputInterface
 
 {
     Q_OBJECT
 
     Phonon::AudioDataOutput* m_frontend;
-    Q_INTERFACES(Phonon::AudioDataOutputInterface Phonon::Xine::SinkNode)
+    Q_INTERFACES(Phonon::AudioDataOutputInterface Phonon::Xine::SinkNode Phonon::Xine::SourceNode)
 
     public:
         AudioDataOutput(QObject *parent);
@@ -100,6 +101,8 @@ class AudioDataOutput : public QObject,
         void setFrontendObject(Phonon::AudioDataOutput *);
 
         MediaStreamTypes inputMediaStreamTypes() const { return Phonon::Xine::Audio; }
+
+        MediaStreamTypes outputMediaStreamTypes() const { return Phonon::Xine::Audio; }
 
         friend class AudioDataOutputXT;
 

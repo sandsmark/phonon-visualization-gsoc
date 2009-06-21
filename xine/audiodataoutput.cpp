@@ -47,7 +47,7 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
 
 {
     m_xine = Backend::xine();
-    
+
     m_plugin = (scope_plugin_t*)qMalloc(sizeof(scope_plugin_t));
     post_plugin_t  *post_plugin  = (post_plugin_t*)m_plugin;
 
@@ -92,7 +92,7 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
         return;
     }
     source->assert();
-    
+
     xine_post_in_t *target = (xine_post_in_t*)xine_post_input(
                                     &((post_plugin_t*)m_plugin)->xine_post,
                                     const_cast<char*>("audio in"));
@@ -162,8 +162,9 @@ void AudioDataOutputXT::dispose(post_plugin_t *port_gen)
 
 
 /* BACKEND-FRONT OBJECT */
-AudioDataOutput::AudioDataOutput(QObject *)
+AudioDataOutput::AudioDataOutput(QObject*)
 : SinkNode(new AudioDataOutputXT(this))
+, SourceNode(static_cast<AudioDataOutputXT *>(SinkNode::m_threadSafeObject.data()))
 , m_format(Phonon::AudioDataOutput::IntegerFormat)
 {
 }
