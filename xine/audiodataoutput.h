@@ -25,25 +25,71 @@
 
 
 #include "abstractaudiooutput.h"
+#include "sourcenode.h"
 #include <QVector>
 #include <phonon/audiodataoutputinterface.h>
 #include <phonon/audiodataoutput.h>
 //#include <phonon/abstractaudiodataoutput.h>
-#include <xine/audio_out.h>
+
+extern "C" {
+    #define this __this__ //HACK, yeah! (Xine uses “this” as a name for certain variables)
+    #define XINE_ENGINE_INTERNAL //we need the port_ticket
+    #include <xine/audio_out.h>
+    #include <xine/post.h>
+    #undef XINE_ENGINE_INTERNAL
+    #undef this
+}
+
 
 namespace Phonon
 {
 namespace Xine
 {
 
-    class AudioDataOutput : public QObject,
-                            public Phonon::Xine::SinkNode,
-                            //public Phonon::AudioDataOutput,
-                            //public Phonon::AbstractAudioDataOutput,
-                            public Phonon::AudioDataOutputInterface
+class AudioDataOutputXT;
+class AudioDataOutput;
+
+typedef struct
+{
+    post_plugin_t post;
+
+    AudioDataOutputXT *audioDataOutput;
+} scope_plugin_t;
+
+class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
+{
+    public:
+        AudioDataOutputXT(AudioDataOutput *output);
+
+        xine_post_out_t *audioOutputPort() const;
+        
+        //callback functions
+        static int  openPort(xine_audio_port_t*, xine_stream_t*, uint32_t, uint32_t, int);
+        static void closePort(xine_audio_port_t *, xine_stream_t *);
+        static void putBufferCallback(xine_audio_port_s*, audio_buffer_s* buf, xine_stream_s* stream);
+        static void dispose(post_plugin_t*);
+
+        AudioDataOutput *m_frontend;
+    private:
+        void rewireTo(SourceNodeXT *);
+
+        int m_channels;
+
+        scope_plugin_t         m_scope;
+        xine_audio_port_t *m_audioPort;
+        scope_plugin_t       *m_plugin;
+        post_audio_port_t      *m_port;
+        xine_post_out_t      *m_output;
+};
+
+class AudioDataOutput : public QObject,
+                        public Phonon::Xine::SinkNode,
+                        public Phonon::AudioDataOutputInterface
 
 {
     Q_OBJECT
+
+    Phonon::AudioDataOutput* m_frontend;
     Q_INTERFACES(Phonon::AudioDataOutputInterface Phonon::Xine::SinkNode)
 
     public:
@@ -71,13 +117,12 @@ namespace Xine
         void endOfMedia(int remainingSamples);
 
     private:
-        void packetReady(QVector< qint16 > buffer);
+        void packetReady(QVector<qint16> buffer);
 
         Phonon::AudioDataOutput::Format m_format;
         int m_channels;
         int m_dataSize;
         QVector<qint16> m_pendingData;
-        Phonon::AudioDataOutput *m_frontend;
 };
 
 }} //namespace Phonon::Xine
