@@ -46,6 +46,8 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
                     m_audioPort(0)
 
 {
+    m_xine = Backend::xine();
+    
     m_plugin = (scope_plugin_t*)qMalloc(sizeof(scope_plugin_t));
     post_plugin_t  *post_plugin  = (post_plugin_t*)m_plugin;
 
