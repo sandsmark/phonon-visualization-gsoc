@@ -69,6 +69,9 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
         m_port->new_port.open       = openPort;
         m_port->new_port.close      = closePort;
         m_port->new_port.put_buffer = putBufferCallback;
+        reinterpret_cast<post_audio_port_t*>(&m_port->new_port)->original_port = &m_port->new_port; // hahahaha, oh, wow, hackish.
+        m_audioPort = &m_port->new_port;
+        reinterpret_cast<post_audio_port_t*>(m_audioPort)->original_port->set_property; // see? fine!
 
         post_plugin->xine_post.audio_input[0] = &m_port->new_port;
         post_plugin->xine_post.type = PLUGIN_POST;
@@ -88,7 +91,9 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
 
 void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 {
-    if (!source->audioOutputPort()) {
+    debug() << Q_FUNC_INFO << "rewiring to " << source;
+    if (!source->audioOutputPort()) { // I can't get no satisfaction
+        qWarning() << Q_FUNC_INFO << ": No audio port in source!";
         return;
     }
     source->assert();
@@ -97,16 +102,22 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
                                     &((post_plugin_t*)m_plugin)->xine_post,
                                     const_cast<char*>("audio in"));
 
-    xine_post_wire(source->audioOutputPort(), target);
+    if (!xine_post_wire(source->audioOutputPort(), target)) {
+        qWarning() << Q_FUNC_INFO << ": Failed to rewire!";
+        return;
+    }
+
     source->assert();
     SinkNodeXT::assert();
 }
 
 xine_post_out_t *AudioDataOutputXT::audioOutputPort() const
 {
-    return (xine_post_out_t*)xine_post_output(
+    xine_post_out_t* aop = xine_post_output(
                                     &((post_plugin_t*)m_plugin)->xine_post,
                                     const_cast<char*>("audio out"));
+    if (!aop) qWarning() << Q_FUNC_INFO << ": Warning! NULL audio output port!";
+    return aop;
 }
 
 int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stream, uint32_t bits, uint32_t rate, int mode )
@@ -138,7 +149,7 @@ void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *st
     _x_post_dec_usage(port);
 }
 
-void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_buffer_t *buf, xine_stream_t*)
+void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_buffer_t *buf, xine_stream_t *stream)
 {
     AudioDataOutputXT *that = ((scope_plugin_t*)((post_audio_port_t*)port_gen)->post)->audioDataOutput;
 
@@ -150,6 +161,10 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
         buffer[i] = buf->mem[i];
 
     that->m_frontend->packetReady(buffer);
+
+    // Pass on the data to the original port
+    post_audio_port_t *port = (post_audio_port_t*)port_gen;
+    port->original_port->put_buffer(port->original_port, buf, stream);
 }
 
 void AudioDataOutputXT::dispose(post_plugin_t *port_gen)

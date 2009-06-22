@@ -62,6 +62,7 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
         AudioDataOutputXT(AudioDataOutput *output);
 
         xine_post_out_t *audioOutputPort() const;
+        xine_audio_port_t *audioPort() const { qWarning()<<m_audioPort;return m_audioPort; }
 
         //callback functions
         static int  openPort(xine_audio_port_t*, xine_stream_t*, uint32_t, uint32_t, int);
