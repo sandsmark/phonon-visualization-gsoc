@@ -42,11 +42,11 @@ namespace Xine
 AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
                     SinkNodeXT(),
                     SourceNodeXT(),
-                    m_frontend(output),
-                    m_audioPort(0)
+                    m_frontend(output)
 
 {
     m_xine = Backend::xine();
+    m_audioPort = xine_open_audio_driver(m_xine, "none", 0);
 
     m_plugin = (scope_plugin_t*)qMalloc(sizeof(scope_plugin_t));
     post_plugin_t  *post_plugin  = (post_plugin_t*)m_plugin;
@@ -69,9 +69,7 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
         m_port->new_port.open       = openPort;
         m_port->new_port.close      = closePort;
         m_port->new_port.put_buffer = putBufferCallback;
-        reinterpret_cast<post_audio_port_t*>(&m_port->new_port)->original_port = &m_port->new_port; // hahahaha, oh, wow, hackish.
         m_audioPort = &m_port->new_port;
-        reinterpret_cast<post_audio_port_t*>(m_audioPort)->original_port->set_property; // see? fine!
 
         post_plugin->xine_post.audio_input[0] = &m_port->new_port;
         post_plugin->xine_post.type = PLUGIN_POST;
@@ -153,7 +151,7 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
 {
     AudioDataOutputXT *that = ((scope_plugin_t*)((post_audio_port_t*)port_gen)->post)->audioDataOutput;
 
-    qWarning() << "got called back!";
+    qWarning() << Q_FUNC_INFO << "got called back!";
     int samples = buf->num_frames * that->m_channels;
 
     QVector<qint16> buffer(samples);
