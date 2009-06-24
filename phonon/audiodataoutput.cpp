@@ -57,10 +57,12 @@ void AudioDataOutputPrivate::setupBackendObject()
     pBACKEND_CALL1("setDataSize", int, dataSize);
     QObject::connect(m_backendObject,
             SIGNAL(dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > &)),
-            q, SIGNAL(dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > &)));
+            q, SIGNAL(dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > &)),
+            Qt::DirectConnection);
     QObject::connect(m_backendObject,
             SIGNAL(dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<float> > &)),
-            q, SIGNAL(dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<float> > &)));
+            q, SIGNAL(dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<float> > &)),
+            Qt::DirectConnection);
     QObject::connect(m_backendObject, SIGNAL(endOfMedia(int)), q, SIGNAL(endOfMedia(int)));
 }
 
