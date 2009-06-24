@@ -30,6 +30,7 @@ extern "C" {
     #define this __this__ //HACK, yeah! (Xine uses “this” as a name for certain variables)
     #include <xine.h>
     #include <xine/xine_internal.h>
+    #include <xine/list.h>
     #undef this
 }
 
@@ -91,7 +92,6 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 {
     debug() << Q_FUNC_INFO << "rewiring to " << source;
     if (!source->audioOutputPort()) { // I can't get no satisfaction
-        qWarning() << Q_FUNC_INFO << ": No audio port in source!";
         return;
     }
     source->assert();
@@ -104,6 +104,7 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
         qWarning() << Q_FUNC_INFO << ": Failed to rewire!";
         return;
     }
+    m_output = source->audioOutputPort();
 
     source->assert();
     SinkNodeXT::assert();
@@ -111,11 +112,10 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 
 xine_post_out_t *AudioDataOutputXT::audioOutputPort() const
 {
-    xine_post_out_t* aop = xine_post_output(
-                                    &((post_plugin_t*)m_plugin)->xine_post,
-                                    const_cast<char*>("audio out"));
-    if (!aop) qWarning() << Q_FUNC_INFO << ": Warning! NULL audio output port!";
-    return aop;
+    /*xine_post_out_t* aop = xine_post_output(
+                                    &((post_plugin_t*)m_plugin)->,
+                                    const_cast<char*>("audio out"));*/
+    return m_output;
 }
 
 int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stream, uint32_t bits, uint32_t rate, int mode )
@@ -134,7 +134,7 @@ int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stre
     that->m_channels = _x_ao_mode2channels(mode);
     that->m_frontend->setChannels(that->m_channels);
 
-    return port->original_port->open( port->original_port, stream, bits, rate, mode );
+    return port->original_port->open(port->original_port, stream, bits, rate, mode);
 }
 
 void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *stream)
@@ -151,7 +151,6 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
 {
     AudioDataOutputXT *that = ((scope_plugin_t*)((post_audio_port_t*)port_gen)->post)->audioDataOutput;
 
-    qWarning() << Q_FUNC_INFO << "got called back!";
     int samples = buf->num_frames * that->m_channels;
 
     QVector<qint16> buffer(samples);
@@ -160,9 +159,9 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
 
     that->m_frontend->packetReady(buffer);
 
-    // Pass on the data to the original port
-    post_audio_port_t *port = (post_audio_port_t*)port_gen;
-    port->original_port->put_buffer(port->original_port, buf, stream);
+    // Pass on the data to the audio output port
+    /*post_audio_port_t *port = (post_audio_port_t*)port_gen;
+    port->original_port->put_buffer(port->original_port, buf, stream);*/
 }
 
 void AudioDataOutputXT::dispose(post_plugin_t *port_gen)
@@ -216,7 +215,7 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
     if (m_format == Phonon::AudioDataOutput::FloatFormat)
         return;
 
-    if (m_pendingData.size() / m_channels > dataSize())
+    while (m_pendingData.size() / m_channels > dataSize())
     {
         if (m_channels==1)
         {
@@ -230,14 +229,13 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
         else if (m_channels==2)
         {
             IntMap map;
-            QVector<qint16> left, right, data = m_pendingData.mid(0, dataSize() * 2);
-            m_pendingData.remove(0, dataSize() * 2);
-            for (int i=0, j=0; i < dataSize() * 2; i+=2)
+            QVector<qint16> left, right;
+            for (int i=0; i < dataSize(); i+=2)
             {
-                left[j] = m_pendingData[i];
-                right[j] = m_pendingData[i+1];
-                ++j;
+                left.append(m_pendingData[i]);
+                right.append(m_pendingData[i+1]);
             }
+            m_pendingData.remove(0, dataSize() * 2);
             map.insert(Phonon::AudioDataOutput::LeftChannel, left);
             map.insert(Phonon::AudioDataOutput::RightChannel, right);
             emit dataReady(map);

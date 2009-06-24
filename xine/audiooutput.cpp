@@ -331,7 +331,7 @@ void AudioOutputXT::rewireTo(SourceNodeXT *source)
 {
     debug() << Q_FUNC_INFO << ": Rewiring to: " << source;
     if (!source->audioOutputPort()) {
-        qWarning() << Q_FUNC_INFO << ": No audio output port, not rewiring!";
+        debug() << Q_FUNC_INFO << ": No audio output port, not rewiring!";
         return;
     }
     source->assert();

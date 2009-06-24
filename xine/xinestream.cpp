@@ -1686,7 +1686,7 @@ xine_post_out_t *XineStream::audioOutputPort() const
 {
     Q_ASSERT(QThread::currentThread() == XineThread::instance());
     if (!m_stream) {
-        qWarning() << Q_FUNC_INFO << "No stream!";
+        debug() << Q_FUNC_INFO << "No stream!";
         return 0;
     }
     return xine_get_audio_source(m_stream);

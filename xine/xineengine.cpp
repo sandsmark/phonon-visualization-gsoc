@@ -79,7 +79,6 @@ XineEngineData::~XineEngineData()
 
 void XineEngine::create()
 {
-    qWarning() << "CREATING LOL";
     if (!d.data()) {
         d = new XineEngineData;
     }
