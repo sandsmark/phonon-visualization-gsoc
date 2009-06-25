@@ -75,6 +75,8 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
         post_plugin->xine_post.audio_input[0] = &m_port->new_port;
         post_plugin->xine_post.type = PLUGIN_POST;
 
+        m_output = (xine_post_out_t*)output;
+
         post_plugin->dispose = dispose;
     }
 
@@ -139,6 +141,7 @@ int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stre
 
 void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *stream)
 {
+    debug() << Q_FUNC_INFO << " closing port " << port_gen;
     post_audio_port_t *port = (post_audio_port_t*)port_gen;
 
     port->stream = NULL;
@@ -160,8 +163,8 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
     that->m_frontend->packetReady(buffer);
 
     // Pass on the data to the audio output port
-    /*post_audio_port_t *port = (post_audio_port_t*)port_gen;
-    port->original_port->put_buffer(port->original_port, buf, stream);*/
+    post_audio_port_t *port = (post_audio_port_t*)port_gen;
+    port->original_port->put_buffer(port->original_port, buf, stream);
 }
 
 void AudioDataOutputXT::dispose(post_plugin_t *port_gen)
