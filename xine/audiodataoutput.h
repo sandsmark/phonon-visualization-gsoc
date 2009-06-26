@@ -60,6 +60,7 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
 {
     public:
         AudioDataOutputXT(AudioDataOutput *output);
+        ~AudioDataOutputXT();
 
         xine_post_out_t *audioOutputPort() const;
         xine_audio_port_t *audioPort() const { return m_audioPort; }
@@ -75,12 +76,11 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
         void rewireTo(SourceNodeXT *);
 
         AudioDataOutput    *m_frontend;
-        scope_plugin_t         m_scope;
         xine_audio_port_t *m_audioPort;
         scope_plugin_t       *m_plugin;
-        xine_post_out_t      *m_output;
         int                 m_channels;
-};
+
+}; // class AudioDataOutputXT
 
 class AudioDataOutput : public QObject,
                         public Phonon::Xine::SinkNode,
@@ -127,7 +127,8 @@ class AudioDataOutput : public QObject,
         int m_sampleRate;
         QVector<qint16> m_pendingData;
         Phonon::AudioDataOutput::Format m_format;
-};
+
+}; //class AudioDataOutput
 
 }} //namespace Phonon::Xine
 

@@ -38,7 +38,7 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
     m_audioPort = xine_open_audio_driver(m_xine, "none", 0);
 
     m_plugin = (scope_plugin_t*)qMalloc(sizeof(scope_plugin_t));
-    post_plugin_t  *post_plugin  = (post_plugin_t*)m_plugin;
+    post_plugin_t *post_plugin  = (post_plugin_t*)m_plugin;
 
     {
         post_in_t  *input;
@@ -62,10 +62,6 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
 
         post_plugin->xine_post.audio_input[0] = &port->new_port;
         post_plugin->xine_post.type = PLUGIN_POST;
-
-        m_output = (xine_post_out_t*)output;
-
-        post_plugin->dispose = dispose;
     }
 
     /* code is straight from xine_init_post()
@@ -76,6 +72,13 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
     post_plugin->xine = m_xine;
 
     m_plugin->audioDataOutput = this;
+}
+
+AudioDataOutputXT::~AudioDataOutputXT()
+{
+    ((post_plugin_t*)m_plugin)->dispose((post_plugin_t*)m_plugin);
+
+    delete m_plugin;
 }
 
 /// Rewires this node to the specified sourcenode
@@ -95,7 +98,6 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
         qWarning() << Q_FUNC_INFO << ": Failed to rewire!";
         return;
     }
-    m_output = source->audioOutputPort();
 
     source->assert();
     SinkNodeXT::assert();
@@ -163,16 +165,6 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
     port->original_port->put_buffer(port->original_port, buf, stream);
 }
 
-/// Callback function, disposes of this node
-void AudioDataOutputXT::dispose(post_plugin_t *port_gen)
-{
-    AudioDataOutputXT *that = ((scope_plugin_t*)((post_audio_port_t*)port_gen)->post)->audioDataOutput;
-    delete that->m_frontend;
-    delete that;
-}
-
-
-
 
 /* BACKEND-FRONT OBJECT */
 AudioDataOutput::AudioDataOutput(QObject*)
@@ -184,6 +176,8 @@ AudioDataOutput::AudioDataOutput(QObject*)
 
 AudioDataOutput::~AudioDataOutput()
 {
+    K_XT(AudioDataOutput);
+    delete xt;
 }
 
 typedef QMap<Phonon::AudioDataOutput::Channel, QVector<float> > FloatMap;
