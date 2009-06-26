@@ -21,18 +21,6 @@
 */
 
 #include "audiodataoutput.h"
-#include <QVector>
-#include <QMap>
-#include "sourcenode.h"
-#include "audiooutput.h"
-
-extern "C" {
-    #define this __this__ //HACK, yeah! (Xine uses “this” as a name for certain variables)
-    #include <xine.h>
-    #include <xine/xine_internal.h>
-    #include <xine/list.h>
-    #undef this
-}
 
 namespace Phonon
 {
@@ -53,26 +41,26 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
     post_plugin_t  *post_plugin  = (post_plugin_t*)m_plugin;
 
     {
-        post_in_t         *input;
-        post_out_t        *output;
+        post_in_t  *input;
+        post_out_t *output;
 
         //1 audio input, 0 video inputs
         _x_post_init(post_plugin, 1, 0);
 
-        m_port = _x_post_intercept_audio_port(post_plugin, m_audioPort, &input, &output);
+        post_audio_port_t *port = _x_post_intercept_audio_port(post_plugin, m_audioPort, &input, &output);
 
-        if (!m_port) {
+        if (!port) {
             qWarning() << Q_FUNC_INFO << "unable to allocate port";
             delete post_plugin;
             return;
         }
 
-        m_port->new_port.open       = openPort;
-        m_port->new_port.close      = closePort;
-        m_port->new_port.put_buffer = putBufferCallback;
-        m_audioPort = &m_port->new_port;
+        port->new_port.open       = openPort;
+        port->new_port.close      = closePort;
+        port->new_port.put_buffer = putBufferCallback;
+        m_audioPort = &port->new_port;
 
-        post_plugin->xine_post.audio_input[0] = &m_port->new_port;
+        post_plugin->xine_post.audio_input[0] = &port->new_port;
         post_plugin->xine_post.type = PLUGIN_POST;
 
         m_output = (xine_post_out_t*)output;
@@ -90,6 +78,7 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
     m_plugin->audioDataOutput = this;
 }
 
+/// Rewires this node to the specified sourcenode
 void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 {
     debug() << Q_FUNC_INFO << "rewiring to " << source;
@@ -112,15 +101,19 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
     SinkNodeXT::assert();
 }
 
+/// Returns this Source's audio output port
 xine_post_out_t *AudioDataOutputXT::audioOutputPort() const
 {
-    /*xine_post_out_t* aop = xine_post_output(
-                                    &((post_plugin_t*)m_plugin)->,
-                                    const_cast<char*>("audio out"));*/
-    return m_output;
+    return xine_post_output(&((post_plugin_t)m_plugin->post).xine_post,
+                            const_cast<char*>("audio out"));
 }
 
-int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stream, uint32_t bits, uint32_t rate, int mode )
+/// Callback function, opens the xine port
+int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen,
+                                xine_stream_t *stream,
+                                uint32_t bits,
+                                uint32_t rate,
+                                int mode)
 {
     AudioDataOutputXT *that = ((scope_plugin_t*)((post_audio_port_t*)port_gen)->post)->audioDataOutput;
     post_audio_port_t *port = (post_audio_port_t*)port_gen;
@@ -135,10 +128,12 @@ int AudioDataOutputXT::openPort(xine_audio_port_t *port_gen, xine_stream_t *stre
 
     that->m_channels = _x_ao_mode2channels(mode);
     that->m_frontend->setChannels(that->m_channels);
+    that->m_frontend->m_sampleRate = rate;
 
     return port->original_port->open(port->original_port, stream, bits, rate, mode);
 }
 
+/// Callback function, closes the xine port
 void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *stream)
 {
     debug() << Q_FUNC_INFO << " closing port " << port_gen;
@@ -150,6 +145,7 @@ void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *st
     _x_post_dec_usage(port);
 }
 
+/// Callback function, receives audio data
 void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_buffer_t *buf, xine_stream_t *stream)
 {
     AudioDataOutputXT *that = ((scope_plugin_t*)((post_audio_port_t*)port_gen)->post)->audioDataOutput;
@@ -167,9 +163,11 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
     port->original_port->put_buffer(port->original_port, buf, stream);
 }
 
+/// Callback function, disposes of this node
 void AudioDataOutputXT::dispose(post_plugin_t *port_gen)
 {
     AudioDataOutputXT *that = ((scope_plugin_t*)((post_audio_port_t*)port_gen)->post)->audioDataOutput;
+    delete that->m_frontend;
     delete that;
 }
 
@@ -188,27 +186,8 @@ AudioDataOutput::~AudioDataOutput()
 {
 }
 
-Phonon::AudioDataOutput::Format AudioDataOutput::format() const
-{
-    return m_format;
-}
-
-int AudioDataOutput::sampleRate() const
-{
-    return 44100;
-}
-
 typedef QMap<Phonon::AudioDataOutput::Channel, QVector<float> > FloatMap;
 typedef QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > IntMap;
-
-void AudioDataOutput::setFrontendObject(Phonon::AudioDataOutput *frontend) {
-    m_frontend = frontend;
-}
-
-Phonon::AudioDataOutput *AudioDataOutput::frontendObject() const {
-    return m_frontend;
-}
-
 
 inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
 {

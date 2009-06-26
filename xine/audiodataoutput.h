@@ -23,17 +23,16 @@
 #define Phonon_XINE_AUDIODATAOUTPUT_H
 
 
-
-#include "abstractaudiooutput.h"
+#include "audiooutput.h"
 #include "sourcenode.h"
-#include <QVector>
-#include <phonon/audiodataoutputinterface.h>
+#include "sinknode.h"
+
 #include <phonon/audiodataoutput.h>
-//#include <phonon/abstractaudiodataoutput.h>
+#include <phonon/audiodataoutputinterface.h>
 
 extern "C" {
-    #define this __this__ //HACK, yeah! (Xine uses “this” as a name for certain variables)
-    #define XINE_ENGINE_INTERNAL //we need the port_ticket
+    #define this xine_this //HACK; Xine uses “this” as a name for certain variables
+    #define XINE_ENGINE_INTERNAL // We need the port_ticket
     #include <xine/audio_out.h>
     #include <xine/post.h>
     #undef XINE_ENGINE_INTERNAL
@@ -49,6 +48,7 @@ namespace Xine
 class AudioDataOutputXT;
 class AudioDataOutput;
 
+// Our Xine plugin struct
 typedef struct
 {
     post_plugin_t post;
@@ -70,17 +70,16 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
         static void putBufferCallback(xine_audio_port_s*, audio_buffer_s* buf, xine_stream_s* stream);
         static void dispose(post_plugin_t*);
 
-        AudioDataOutput *m_frontend;
+
     private:
         void rewireTo(SourceNodeXT *);
 
-        int m_channels;
-
+        AudioDataOutput    *m_frontend;
         scope_plugin_t         m_scope;
         xine_audio_port_t *m_audioPort;
         scope_plugin_t       *m_plugin;
-        post_audio_port_t      *m_port;
         xine_post_out_t      *m_output;
+        int                 m_channels;
 };
 
 class AudioDataOutput : public QObject,
@@ -98,21 +97,21 @@ class AudioDataOutput : public QObject,
         AudioDataOutput(QObject *parent);
         ~AudioDataOutput();
 
-        Phonon::AudioDataOutput *frontendObject() const;
-        void setFrontendObject(Phonon::AudioDataOutput *);
-
+        //Getters
         MediaStreamTypes inputMediaStreamTypes() const { return Phonon::Xine::Audio; }
-
         MediaStreamTypes outputMediaStreamTypes() const { return Phonon::Xine::Audio; }
+        Phonon::AudioDataOutput::Format format() const { return m_format; }
+        Phonon::AudioDataOutput *frontendObject() const { return m_frontend; }
+        int channels() const { return m_channels; }
+        int dataSize() const { return m_dataSize; }
+        int sampleRate() const { return m_sampleRate; }
 
         friend class AudioDataOutputXT;
 
     public slots:
-        Phonon::AudioDataOutput::Format format() const;
-        int sampleRate() const;
-        int channels() const { return m_channels; }
+        //Setters
+        void setFrontendObject(Phonon::AudioDataOutput *frontend) { m_frontend = frontend; }
         void setChannels(int channels) { m_channels = channels; m_pendingData.clear(); }
-        int dataSize() { return m_dataSize; }
         void setDataSize(int ds) { m_dataSize = ds; }
 
     signals:
@@ -123,10 +122,11 @@ class AudioDataOutput : public QObject,
     private:
         void packetReady(QVector<qint16> buffer);
 
-        Phonon::AudioDataOutput::Format m_format;
         int m_channels;
         int m_dataSize;
+        int m_sampleRate;
         QVector<qint16> m_pendingData;
+        Phonon::AudioDataOutput::Format m_format;
 };
 
 }} //namespace Phonon::Xine
