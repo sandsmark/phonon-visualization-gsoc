@@ -61,6 +61,8 @@ namespace Gstreamer
             Phonon::AudioDataOutput* frontendObject() const { return m_frontend; }
             void setFrontendObject(Phonon::AudioDataOutput *frontend) { m_frontend = frontend; }
 
+            GstElement *audioElement() { return m_audioSink; }
+
         signals:
             void dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > &data);
             void dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<float> > &data);
