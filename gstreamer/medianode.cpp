@@ -150,7 +150,7 @@ bool MediaNode::breakGraph()
 
 bool MediaNode::connectNode(QObject *obj)
 {
-    MediaNode *sink = qobject_cast<MediaNode*>(obj);
+    MediaNode *sink = dynamic_cast<MediaNode*>(obj);
 
     bool success = false;
 
