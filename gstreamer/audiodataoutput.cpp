@@ -41,7 +41,7 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
     m_name = "AudioDataOutput" + QString::number(count++);
     if (m_backend->isValid()) {
         // Make sure glib has the same appname
-        g_set_application_name(qApp->applicationName().toUtf8());
+//        g_set_application_name(qApp->applicationName().toUtf8());
 
         // Initialize a new container
         m_audioBin = gst_bin_new (NULL);
