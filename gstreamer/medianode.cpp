@@ -104,7 +104,7 @@ bool MediaNode::buildGraph()
     if (success) {
         // connect children recursively
         for (int i=0; i< m_audioSinkList.size(); ++i) {
-            if (MediaNode *node = qobject_cast<MediaNode*>(m_audioSinkList[i])) {
+            if (MediaNode *node = dynamic_cast<MediaNode*>(m_audioSinkList[i])) {
                 node->setRoot(root());
                 if (!node->buildGraph())
                     success = false;
@@ -112,7 +112,7 @@ bool MediaNode::buildGraph()
         }
 
         for (int i=0; i < m_videoSinkList.size(); ++i) {
-            if (MediaNode *node = qobject_cast<MediaNode*>(m_videoSinkList[i])) {
+            if (MediaNode *node = dynamic_cast<MediaNode*>(m_videoSinkList[i])) {
                 node->setRoot(root());
                 if (!node->buildGraph())
                     success = false;
@@ -132,14 +132,14 @@ bool MediaNode::buildGraph()
 bool MediaNode::breakGraph()
 {
     for (int i=0; i<m_audioSinkList.size(); ++i) {
-        MediaNode *node = qobject_cast<MediaNode*>(m_audioSinkList[i]);
+        MediaNode *node = dynamic_cast<MediaNode*>(m_audioSinkList[i]);
         if (!node || !node->breakGraph())
             return false;
         node->setRoot(0);
     }
 
     for (int i=0; i <m_videoSinkList.size(); ++i) {
-        MediaNode *node = qobject_cast<MediaNode*>(m_videoSinkList[i]);
+        MediaNode *node = dynamic_cast<MediaNode*>(m_videoSinkList[i]);
         if (!node || !node->breakGraph())
             return false;
         node->setRoot(0);
@@ -193,7 +193,7 @@ bool MediaNode::connectNode(QObject *obj)
 
 bool MediaNode::disconnectNode(QObject *obj)
 {
-    MediaNode *sink = qobject_cast<MediaNode*>(obj);
+    MediaNode *sink = dynamic_cast<MediaNode*>(obj);
     if (root()) {
         // Disconnecting elements while playing or paused seems to cause
         // potential deadlock. Hence we force the pipeline into ready state
@@ -263,12 +263,12 @@ void MediaNode::notify(const MediaNodeEvent *event)
     Q_ASSERT(event);
     mediaNodeEvent(event);
     for (int i=0; i<m_audioSinkList.size(); ++i) {
-        MediaNode *node = qobject_cast<MediaNode*>(m_audioSinkList[i]);
+        MediaNode *node = dynamic_cast<MediaNode*>(m_audioSinkList[i]);
         node->notify(event);
     }
 
     for (int i=0; i<m_videoSinkList.size(); ++i) {
-        MediaNode *node = qobject_cast<MediaNode*>(m_videoSinkList[i]);
+        MediaNode *node = dynamic_cast<MediaNode*>(m_videoSinkList[i]);
         node->notify(event);
     }
 }
@@ -388,7 +388,7 @@ bool MediaNode::linkMediaNodeList(QList<QObject *> &list, GstElement *bin, GstEl
 
         for (int i = 0 ; i < list.size() ; ++i) {
             QObject *sink = list[i];
-            if (MediaNode *output = qobject_cast<MediaNode*>(sink)) {
+            if (MediaNode *output = dynamic_cast<MediaNode*>(sink)) {
                 if (!addOutput(output, tee))
                     return false;
             }
@@ -422,7 +422,7 @@ bool MediaNode::unlink()
        }
         for (int i=0; i<m_audioSinkList.size(); ++i) {
             QObject *audioSink = m_audioSinkList[i];
-            if (MediaNode *output = qobject_cast<MediaNode*>(audioSink)) {
+            if (MediaNode *output = dynamic_cast<MediaNode*>(audioSink)) {
                 GstElement *element = output->audioElement();
                 if (GST_ELEMENT_PARENT(element) == GST_ELEMENT(root()->audioGraph())) {
                     gst_element_set_state(element, GST_STATE_NULL);    
@@ -437,7 +437,7 @@ bool MediaNode::unlink()
         }
         for (int i=0; i <m_videoSinkList.size(); ++i) {
             QObject *videoSink = m_videoSinkList[i];
-            if (MediaNode *vw = qobject_cast<MediaNode*>(videoSink)) {
+            if (MediaNode *vw = dynamic_cast<MediaNode*>(videoSink)) {
                 GstElement *element = vw->videoElement();
                 if (GST_ELEMENT_PARENT(element) == GST_ELEMENT(root()->videoGraph())) {
                     gst_element_set_state(element, GST_STATE_NULL);    
