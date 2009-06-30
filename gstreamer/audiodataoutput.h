@@ -38,10 +38,10 @@ namespace Gstreamer
      */
     class AudioDataOutput : public QObject,
                             public AudioDataOutputInterface,
-                            public Gstreamer::MediaNode
+                            public MediaNode
     {
         Q_OBJECT
-        //Q_INTERFACES(AudioDataOutput)
+        Q_INTERFACES(Phonon::AudioDataOutputInterface Phonon::Gstreamer::MediaNode)
 
         public:
             AudioDataOutput(Backend *, QObject *);
