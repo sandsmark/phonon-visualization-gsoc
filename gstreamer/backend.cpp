@@ -304,7 +304,7 @@ bool Backend::startConnectionChange(QSet<QObject *> objects)
 {
     foreach (QObject *object, objects) {
         qWarning() << object->metaObject()->className();
-        MediaNode *sourceNode = dynamic_cast<MediaNode *>(object);
+        MediaNode *sourceNode = qobject_cast<MediaNode *>(object);
         Q_ASSERT(sourceNode);
         MediaObject *media = sourceNode->root();
         if (media) {
@@ -321,10 +321,8 @@ bool Backend::startConnectionChange(QSet<QObject *> objects)
 bool Backend::connectNodes(QObject *source, QObject *sink)
 {
     if (isValid()) {
-        MediaNode *sourceNode = dynamic_cast<MediaNode *>(source);
-        MediaNode *sinkNode = dynamic_cast<MediaNode *>(sink);
-        qWarning() << sink->metaObject()->className();
-        Q_ASSERT(sinkNode);
+        MediaNode *sourceNode = qobject_cast<MediaNode *>(source);
+        MediaNode *sinkNode = qobject_cast<MediaNode *>(sink);
         if (sourceNode && sinkNode) {
             if (sourceNode->connectNode(sink)) {
                 sourceNode->root()->invalidateGraph();
@@ -342,8 +340,8 @@ bool Backend::connectNodes(QObject *source, QObject *sink)
  */
 bool Backend::disconnectNodes(QObject *source, QObject *sink)
 {
-    MediaNode *sourceNode = dynamic_cast<MediaNode *>(source);
-    MediaNode *sinkNode = dynamic_cast<MediaNode *>(sink);
+    MediaNode *sourceNode = qobject_cast<MediaNode *>(source);
+    MediaNode *sinkNode = qobject_cast<MediaNode *>(sink);
 
     if (sourceNode && sinkNode)
         return sourceNode->disconnectNode(sink);
@@ -357,7 +355,7 @@ bool Backend::disconnectNodes(QObject *source, QObject *sink)
 bool Backend::endConnectionChange(QSet<QObject *> objects)
 {
     foreach (QObject *object, objects) {
-        MediaNode *sourceNode = dynamic_cast<MediaNode *>(object);
+        MediaNode *sourceNode = qobject_cast<MediaNode *>(object);
         MediaObject *media = sourceNode->root();
         if (media) {
             media->resumeState();
