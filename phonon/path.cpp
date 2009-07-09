@@ -157,6 +157,7 @@ bool Path::reconnect(MediaNode *source, MediaNode *sink)
 {
     if (!source || !sink || !source->k_ptr->backendObject() || !sink->k_ptr->backendObject()) {
         if (!sink->k_ptr->backendObject()) qWarning() << "no backend object in sink";
+        if (!source->k_ptr->backendObject()) qWarning() << "no backend object in sink";
         return false;
     }
 
@@ -322,6 +323,7 @@ bool PathPrivate::executeTransaction( const QList<QObjectPair> &disconnections, 
                 Q_ASSERT(success); //a failure here means it is impossible to reestablish the connection
                 Q_UNUSED(success);
             }
+            qWarning() << Q_FUNC_INFO << "disconnection failed!";
             return false;
         }
     }
@@ -344,7 +346,7 @@ bool PathPrivate::executeTransaction( const QList<QObjectPair> &disconnections, 
                 Q_ASSERT(success); //a failure here means it is impossible to reestablish the connection
                 Q_UNUSED(success);
             }
-
+            qWarning() << Q_FUNC_INFO << "connection failed, rollback succeeded";
             return false;
 
         }
