@@ -29,8 +29,8 @@ namespace Xine
 
 
 AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
-                    SinkNodeXT(),
-                    SourceNodeXT(),
+                    SinkNodeXT("AudioDataOutput"),
+                    SourceNodeXT("AudioDataOutput"),
                     m_frontend(output)
 
 {
@@ -115,6 +115,7 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
         qWarning() << Q_FUNC_INFO << ": Failed to rewire!";
         return;
     }
+    m_postOutput = source->audioOutputPort();
 
     // Make sure things went okay
     source->assert();
@@ -125,8 +126,19 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 xine_post_out_t *AudioDataOutputXT::audioOutputPort() const
 {
     // Get our post plugin's audio output
-    return xine_post_output(&((post_plugin_t)m_plugin->post).xine_post,
-                            const_cast<char*>("audio out"));
+    //return xine_post_output(&((post_plugin_t)m_plugin->post).xine_post,
+    //                       const_cast<char*>("audio out"));
+    //return m_postOutput;
+
+    // HACK HACK HACK
+    // Phonon-Xine is broken by design
+    xine_audio_port_t *audioPort;
+    /*foreach (SinkNode *sink, m_frontend->sinks()) {
+        if (sink->threadSafeObject()->audioPort()) {
+            m_audioPort = sink->threadSafeObject()->audioPort(); // yeah yeah, care
+        }
+    }
+    return m_postOutput;*/
 }
 
 /// Callback function, opens the xine port

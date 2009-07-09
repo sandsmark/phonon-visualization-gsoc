@@ -79,6 +79,7 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
         xine_audio_port_t *m_audioPort;
         scope_plugin_t       *m_plugin;
         int                 m_channels;
+        xine_post_out_t  *m_postOutput;
 
 }; // class AudioDataOutputXT
 
