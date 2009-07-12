@@ -26,6 +26,8 @@
 #include "audiooutput.h"
 #include "sourcenode.h"
 #include "sinknode.h"
+#include "events.h"
+
 
 #include <phonon/audiodataoutput.h>
 #include <phonon/audiodataoutputinterface.h>
@@ -64,6 +66,8 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
 
         xine_post_out_t *audioOutputPort() const;
         xine_audio_port_t *audioPort() const { return m_audioPort; }
+
+        void intercept(xine_audio_port_t*);
 
         //callback functions
         static int  openPort(xine_audio_port_t*, xine_stream_t*, uint32_t, uint32_t, int);
@@ -106,6 +110,8 @@ class AudioDataOutput : public QObject,
         int channels() const { return m_channels; }
         int dataSize() const { return m_dataSize; }
         int sampleRate() const { return m_sampleRate; }
+
+        void upstreamEvent(Event*);
 
         friend class AudioDataOutputXT;
 

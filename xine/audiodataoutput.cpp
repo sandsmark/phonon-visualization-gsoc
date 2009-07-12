@@ -21,6 +21,8 @@
 */
 
 #include "audiodataoutput.h"
+#include "mediaobject.h"
+
 
 namespace Phonon
 {
@@ -31,13 +33,14 @@ namespace Xine
 AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
                     SinkNodeXT("AudioDataOutput"),
                     SourceNodeXT("AudioDataOutput"),
-                    m_frontend(output)
+                    m_frontend(output),
+                    m_audioPort(0)
 
 {
     m_xine = Backend::xine();
 
     // Dummy audio input port, until we get the proper one
-    m_audioPort = xine_open_audio_driver(m_xine, "none", 0);
+    xine_audio_port_t *port = xine_open_audio_driver(m_xine, "none", 0);
 
     // Allocate a new scope plugin
     m_plugin = (scope_plugin_t*)qMalloc(sizeof(scope_plugin_t));
@@ -45,34 +48,11 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
     // It is also a post plugin
     post_plugin_t *post_plugin  = (post_plugin_t*)m_plugin;
 
-    {
-        post_in_t  *input;
-        post_out_t *output;
+    //1 audio input, 0 video inputs
+    _x_post_init(post_plugin, 1, 0);
 
-        //1 audio input, 0 video inputs
-        _x_post_init(post_plugin, 1, 0);
-
-        // Populate the port with dummy functions
-        post_audio_port_t *port = _x_post_intercept_audio_port(post_plugin, m_audioPort, &input, &output);
-
-        if (!port) {
-            qWarning() << Q_FUNC_INFO << "unable to allocate port";
-            delete post_plugin;
-            return;
-        }
-
-        // Put in our own callbacks
-        port->new_port.open       = openPort;
-        port->new_port.close      = closePort;
-        port->new_port.put_buffer = putBufferCallback;
-
-        // Store the audio port for future use
-        m_audioPort = &port->new_port;
-
-        // Wire in the port input into our post plugin
-        post_plugin->xine_post.audio_input[0] = &port->new_port;
-        post_plugin->xine_post.type = PLUGIN_POST;
-    }
+    // Intercept the null audio port (until we get the proper one)
+    intercept(port);
 
     /* code is straight from xine_init_post()
     can't use that function as it only dlopens the plugins
@@ -125,20 +105,45 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 /// Returns this Source's audio output port
 xine_post_out_t *AudioDataOutputXT::audioOutputPort() const
 {
-    // Get our post plugin's audio output
-    //return xine_post_output(&((post_plugin_t)m_plugin->post).xine_post,
-    //                       const_cast<char*>("audio out"));
-    //return m_postOutput;
+    return m_postOutput;
+}
 
-    // HACK HACK HACK
-    // Phonon-Xine is broken by design
-    xine_audio_port_t *audioPort;
-    /*foreach (SinkNode *sink, m_frontend->sinks()) {
-        if (sink->threadSafeObject()->audioPort()) {
-            m_audioPort = sink->threadSafeObject()->audioPort(); // yeah yeah, care
-        }
+/// Intercepts a given Xine audio port (called from AudioOutput)
+void AudioDataOutputXT::intercept(xine_audio_port_t *p) {
+
+    if (p == m_audioPort) // we're already intercepting this one
+        return;
+    m_audioPort = p;
+
+    post_in_t  *input;
+    post_out_t *output;
+
+    post_plugin_t *post_plugin  = (post_plugin_t*)m_plugin;
+
+    // Populate the port with dummy functions
+    post_audio_port_t *port = _x_post_intercept_audio_port(post_plugin, m_audioPort, &input, &output);
+    /* TODO:
+     *  Do we leak these ports? Or is the Xine reference counting enough?
+     *  Stay tuned for valgrind and interesting questions!
+     */
+
+    if (!port) {
+        qWarning() << Q_FUNC_INFO << "unable to allocate port! (out of memory?)";
+        delete post_plugin;
+        return;
     }
-    return m_postOutput;*/
+
+    // Put in our own callbacks
+    port->new_port.open       = openPort;
+    port->new_port.close      = closePort;
+    port->new_port.put_buffer = putBufferCallback;
+
+    // Store the audio port for future use
+    m_audioPort = &port->new_port;
+
+    // Wire in the port input into our post plugin
+    post_plugin->xine_post.audio_input[0] = &port->new_port;
+    post_plugin->xine_post.type = PLUGIN_POST;
 }
 
 /// Callback function, opens the xine port
@@ -265,6 +270,18 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
             emit dataReady(map);
         }
     }
+}
+
+void AudioDataOutput::upstreamEvent(Event *e)
+{
+    Q_ASSERT(e);
+    if (e->type() == Event::IsThereAXineEngineForMe) {
+        // yes there is
+        MediaObject *mediaObject = dynamic_cast<MediaObject*>(m_source);
+        if (mediaObject)
+            SourceNode::downstreamEvent(new HeresYourXineStreamEvent(mediaObject->stream()));
+    } else
+        SourceNode::upstreamEvent(e);
 }
 
 }} //namespace Phonon::Xine

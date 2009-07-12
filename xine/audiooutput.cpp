@@ -33,6 +33,7 @@
 #include "xineengine.h"
 #include "xinethread.h"
 #include "keepreference.h"
+#include "audiodataoutput.h"
 
 #include <xine/audio_out.h>
 
@@ -285,6 +286,14 @@ bool AudioOutput::setOutputDevice(const AudioOutputDevice &newDevice)
         QCoreApplication::postEvent(XineThread::instance(), new RewireEvent(wireCall, unwireCall));
         graphChanged();
     }
+
+    AudioDataOutputXT *dataOutput = dynamic_cast<AudioDataOutputXT*>(m_source->threadSafeObject().data());
+    qWarning() << "foobar:" << m_source->threadSafeObject().data();
+    if (dataOutput) {
+        qWarning() << "yay, intercepting fo life, baby!";
+        dataOutput->intercept(xt->m_audioPort);
+    }
+
     return true;
 }
 
@@ -298,11 +307,18 @@ void AudioOutput::xineEngineChanged()
             QMetaObject::invokeMethod(this, "audioDeviceFailed", Qt::QueuedConnection);
             return;
         }
-
         // our XT object is in a wirecall, better not delete it
 
         Q_ASSERT(xt->m_audioPort == 0);
         xt->m_audioPort = port;
+
+
+        AudioDataOutputXT *dataOutput = dynamic_cast<AudioDataOutputXT*>(m_source->threadSafeObject().data());
+        qWarning() << ":" << m_source->threadSafeObject().data();
+        if (dataOutput) {
+            qWarning() << "yay, intercepting fo life, baby!";
+            dataOutput->intercept(xt->m_audioPort);
+        }
     }
 }
 
@@ -330,11 +346,13 @@ void AudioOutput::downstreamEvent(Event *e)
 void AudioOutputXT::rewireTo(SourceNodeXT *source)
 {
     debug() << Q_FUNC_INFO << ": Rewiring to: " << source;
+
     if (!source->audioOutputPort()) {
         debug() << Q_FUNC_INFO << ": No audio output port, not rewiring!";
         return;
     }
     source->assert();
+
     xine_post_wire_audio_port(source->audioOutputPort(), m_audioPort);
     source->assert();
     SinkNodeXT::assert();
