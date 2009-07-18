@@ -40,6 +40,7 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
     static int count = 0;
     m_name = "AudioDataOutput" + QString::number(count++);
 
+    if (!m_backend->isValid()) qWarning() << "fuuu, no valid backend";
     if (m_backend->isValid()) {
         // Initialize a new container
         m_audioBin = gst_bin_new (NULL);
@@ -50,14 +51,16 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
 
         // We use this to leech audio data
         GstElement *convert = gst_element_factory_make ("audioconvert", NULL);
+        gst_bin_add(GST_BIN (m_audioBin), convert);
 
         // We need a queue to handle tee-connections from parent node
         GstElement *queue= gst_element_factory_make ("queue", NULL);
+        gst_bin_add(GST_BIN (m_audioBin), queue);
 
-        if (queue && convert && m_audioBin && m_audioSink) {
+        if (queue && convert && m_audioBin) {
             // Link up our wonderful little path
-            gst_bin_add_many (GST_BIN (m_audioBin), queue, convert, m_audioSink, (const char*)NULL);
-            if (gst_element_link_many (queue, convert, m_audioSink, (const char*)NULL)) {
+            //gst_bin_add_many (GST_BIN (m_audioBin), m_audioSink, (const char*)NULL);
+            if (gst_element_link_many (queue, convert, (const char*)NULL)) {
 
                 // Add ghost sink for our audiobin
                 GstPad *audiopad = gst_element_get_pad (queue, "sink");
@@ -73,7 +76,9 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
                 gst_object_unref (audiopad);
                 m_isValid = true; // Initialization ok, accept input
             }
+            else qWarning() << "Link many failed";
         }
+        else qWarning() << "we no has all elementos";
     }
     if (!m_isValid) qWarning() << Q_FUNC_INFO << ": initialization failed";
 }
