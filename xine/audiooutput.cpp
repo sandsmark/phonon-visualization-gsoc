@@ -288,11 +288,8 @@ bool AudioOutput::setOutputDevice(const AudioOutputDevice &newDevice)
     }
 
     AudioDataOutputXT *dataOutput = dynamic_cast<AudioDataOutputXT*>(m_source->threadSafeObject().data());
-    qWarning() << "foobar:" << m_source->threadSafeObject().data();
-    if (dataOutput) {
-        qWarning() << "yay, intercepting fo life, baby!";
+    if (dataOutput)
         dataOutput->intercept(xt->m_audioPort);
-    }
 
     return true;
 }
@@ -314,11 +311,8 @@ void AudioOutput::xineEngineChanged()
 
 
         AudioDataOutputXT *dataOutput = dynamic_cast<AudioDataOutputXT*>(m_source->threadSafeObject().data());
-        qWarning() << ":" << m_source->threadSafeObject().data();
-        if (dataOutput) {
-            qWarning() << "yay, intercepting fo life, baby!";
+        if (dataOutput)
             dataOutput->intercept(xt->m_audioPort);
-        }
     }
 }
 
