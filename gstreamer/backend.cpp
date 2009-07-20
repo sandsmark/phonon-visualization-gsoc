@@ -303,7 +303,6 @@ QHash<QByteArray, QVariant> Backend::objectDescriptionProperties(ObjectDescripti
 bool Backend::startConnectionChange(QSet<QObject *> objects)
 {
     foreach (QObject *object, objects) {
-        qWarning() << object->metaObject()->className();
         MediaNode *sourceNode = qobject_cast<MediaNode *>(object);
         Q_ASSERT(sourceNode);
         MediaObject *media = sourceNode->root();
