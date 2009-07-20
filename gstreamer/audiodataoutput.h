@@ -61,7 +61,10 @@ namespace Gstreamer
             Phonon::AudioDataOutput* frontendObject() const { return m_frontend; }
             void setFrontendObject(Phonon::AudioDataOutput *frontend) { m_frontend = frontend; }
 
-            GstElement *audioElement() { return m_audioBin; }
+            GstElement *audioElement() { return m_queue; }
+
+            void mediaNodeEvent(const MediaNodeEvent *event);
+
 
         signals:
             void dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > &data);
@@ -72,8 +75,9 @@ namespace Gstreamer
             void convertAndEmit(const QVector<qint16> &buffer);
 
             Phonon::AudioDataOutput::Format m_format;
-            GstElement *m_audioBin; // Aptly named container of GstElements
-            GstElement *m_audioSink; // Aptly named sink that gets audio
+/*            GstElement *m_audioBin; // Aptly named container of GstElements
+            GstElement *m_audioSink; // Aptly named sink that gets audio */
+            GstElement *m_queue;
             int m_dataSize;
             QVector<qint16> m_pendingData;
             Phonon::AudioDataOutput *m_frontend;

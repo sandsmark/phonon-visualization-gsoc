@@ -24,6 +24,7 @@
 #include "audiodataoutput.h"
 #include "gsthelper.h"
 #include "medianode.h"
+#include "mediaobject.h"
 #include <QtCore/QVector>
 #include <QtCore/QMap>
 #include <phonon/audiooutput.h>
@@ -43,50 +44,50 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
     if (!m_backend->isValid()) qWarning() << "fuuu, no valid backend";
     if (m_backend->isValid()) {
         // Initialize a new container
-        m_audioBin = gst_bin_new (NULL);
-        gst_object_ref (GST_OBJECT (m_audioBin));  // boilerplate
-        gst_object_sink (GST_OBJECT (m_audioBin)); // sweet boilerplate
-
-        Phonon::Category category = Phonon::NoCategory;
+        //m_audioBin = gst_bin_new (NULL);
+        //gst_object_ref (GST_OBJECT (m_audioBin));  // boilerplate (we own this object now)
+        //gst_object_sink (GST_OBJECT (m_audioBin)); // sweet boilerplate
 
         // We use this to leech audio data
-        GstElement *convert = gst_element_factory_make ("audioconvert", NULL);
-        gst_bin_add(GST_BIN (m_audioBin), convert);
+        //GstElement *convert = gst_element_factory_make ("audioconvert", NULL);
+        //gst_bin_add(GST_BIN (m_audioBin), convert);
 
         // We need a queue to handle tee-connections from parent node
-        GstElement *queue= gst_element_factory_make ("queue", NULL);
-        gst_bin_add(GST_BIN (m_audioBin), queue);
+        m_queue = gst_element_factory_make ("queue", NULL);
+        //gst_bin_add(GST_BIN (m_audioBin), queue);
 
-        if (queue && convert && m_audioBin) {
+        //if (queue && convert && m_audioBin) {
             // Link up our wonderful little path
             //gst_bin_add_many (GST_BIN (m_audioBin), m_audioSink, (const char*)NULL);
-            if (gst_element_link_many (queue, convert, (const char*)NULL)) {
+            //if (gst_element_link_many (queue, convert, (const char*)NULL)) {
 
                 // Add ghost sink for our audiobin
-                GstPad *audiopad = gst_element_get_pad (queue, "sink");
-                gst_element_add_pad (m_audioBin, gst_ghost_pad_new ("sink", audiopad));
-                gst_object_unref(audiopad);
+                //GstPad *audiopad = gst_element_get_pad (queue, "sink");
+                //gst_element_add_pad (m_audioBin, gst_ghost_pad_new ("sink", audiopad));
+                //gst_object_unref(audiopad);
 
                 // add our probe
-                audiopad = gst_element_get_pad (convert, "src");
-                gst_pad_add_buffer_probe (audiopad, G_CALLBACK(processBuffer), this);
+                //GstPad *audiopad = gst_element_get_pad (m_audioTee, "src");
+                //GstPad *audiopad = gst_element_get_pad (root()->audioElement(), "src");
+                //gst_pad_add_buffer_probe (audiopad, G_CALLBACK(processBuffer), this);
 
                 // add ghost source for our audio bin
-                gst_element_add_pad (m_audioBin, gst_ghost_pad_new ("src", audiopad));
-                gst_object_unref (audiopad);
-                m_isValid = true; // Initialization ok, accept input
-            }
-            else qWarning() << "Link many failed";
-        }
-        else qWarning() << "we no has all elementos";
+                //gst_element_add_pad (m_audioBin, gst_ghost_pad_new ("src", audiopad));
+                //gst_object_unref (audiopad);
+                //m_isValid = true; // Initialization ok, accept input
+            //}
+            //else qWarning() << "Link many failed";
+        //}
+        //else qWarning() << "we no has all elementos";
     }
-    if (!m_isValid) qWarning() << Q_FUNC_INFO << ": initialization failed";
+    m_isValid = true;
+    //if (!m_isValid) qWarning() << Q_FUNC_INFO << ": initialization failed";
 }
 
 AudioDataOutput::~AudioDataOutput()
 {
-    gst_object_unref(m_audioSink);
-    gst_object_unref(m_audioBin);
+    //gst_object_unref(m_audioSink);
+    //gst_object_unref(m_audioBin);
 }
 
 Phonon::AudioDataOutput::Format AudioDataOutput::format() const
@@ -141,13 +142,12 @@ inline void AudioDataOutput::convertAndEmit(const QVector<qint16> &buffer)
 
 void AudioDataOutput::processBuffer(GstPad*, GstBuffer* buffer, gpointer gThat)
 {
-    qWarning() << "got ze callback!";
     // TODO emit endOfMedia
     AudioDataOutput *that = reinterpret_cast<AudioDataOutput*>(gThat);
     that->m_pendingData.resize(that->m_pendingData.size() + buffer->size);
 
     for (uint i=0; i<buffer->size; i++)
-        that->m_pendingData.append(buffer->data[i]);
+        that->m_pendingData.append(buffer->data[i]*(1<<8));
 
     if (that->m_pendingData.size() < that->m_dataSize)
         return;
@@ -168,7 +168,20 @@ void AudioDataOutput::processBuffer(GstPad*, GstBuffer* buffer, gpointer gThat)
     }
 }
 
+void AudioDataOutput::mediaNodeEvent(const MediaNodeEvent *event)
+{
+    if (event->type() == MediaNodeEvent::MediaObjectConnected && root()){
+        GstPad *audiopad = gst_element_get_pad (root()->audioElement(), "src");
+        gst_pad_add_buffer_probe (audiopad, G_CALLBACK(processBuffer), this);
+        gst_object_unref (audiopad);
+        return;
+    }
+
+    MediaNode::mediaNodeEvent(event);
+}
+
 }} //namespace Phonon::Gstreamer
 
 #include "moc_audiodataoutput.cpp"
 // vim: sw=4 ts=4
+

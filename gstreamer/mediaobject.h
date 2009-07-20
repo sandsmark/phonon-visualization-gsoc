@@ -55,6 +55,7 @@ class MediaObject : public QObject, public MediaObjectInterface
         , public MediaNode
 {
     friend class Stream;
+    friend class AudioDataOutput;
     Q_OBJECT
     Q_INTERFACES(Phonon::MediaObjectInterface
 #ifndef QT_NO_PHONON_MEDIACONTROLLER
@@ -159,7 +160,7 @@ public:
 
 public Q_SLOTS:
     void setState(State);
-    
+
 Q_SIGNALS:
     void currentSourceChanged(const MediaSource &newSource);
     void stateChanged(Phonon::State newstate, Phonon::State oldstate);
@@ -203,7 +204,7 @@ protected:
     bool createPipefromStream(const MediaSource &);
 
 private Q_SLOTS:
-    void noMorePadsAvailable();    
+    void noMorePadsAvailable();
     void getStreamInfo();
     void emitTick();
     void beginPlay();
