@@ -55,9 +55,8 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
     intercept(port);
 
     /* code is straight from xine_init_post()
-    can't use that function as it only dlopens the plugins
-    and our plugin is statically linked in */
-
+       can't use that function as it only dlopens the plugins
+       and our plugin is statically linked in */
     post_plugin->running_ticket = (*m_xine).port_ticket;
     post_plugin->xine = m_xine;
 
@@ -67,14 +66,10 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
 
 AudioDataOutputXT::~AudioDataOutputXT()
 {
-    // Let Xine dispose of our post plugin
-    ((post_plugin_t*)m_plugin)->dispose((post_plugin_t*)m_plugin);
-
-    // Free the memory held by our plugin
     delete m_plugin;
 }
 
-/// Rewires this node to the specified sourcenode
+/// Rewires this node to the specified sourcenode. I don't think this is ever used (properly).
 void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
 {
     debug() << Q_FUNC_INFO << "rewiring to " << source;
@@ -102,15 +97,15 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
     SinkNodeXT::assert();
 }
 
-/// Returns this Source's audio output port
+/// Returns this Source's audio output port. Don't think this is used either.
 xine_post_out_t *AudioDataOutputXT::audioOutputPort() const
 {
     return m_postOutput;
 }
 
 /// Intercepts a given Xine audio port (called from AudioOutput)
-void AudioDataOutputXT::intercept(xine_audio_port_t *p) {
-
+void AudioDataOutputXT::intercept(xine_audio_port_t *p)
+{
     if (p == m_audioPort) // we're already intercepting this one
         return;
     m_audioPort = p;
@@ -184,6 +179,7 @@ void AudioDataOutputXT::closePort(xine_audio_port_t *port_gen, xine_stream_t *st
     port->stream = NULL;
     port->original_port->close(port->original_port, stream);
 
+    // Decrease the reference counter in the port
     _x_post_dec_usage(port);
 }
 
@@ -272,6 +268,7 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
     }
 }
 
+/// Handle events (basically just pass it on)
 void AudioDataOutput::upstreamEvent(Event *e)
 {
     Q_ASSERT(e);
