@@ -41,53 +41,13 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
     static int count = 0;
     m_name = "AudioDataOutput" + QString::number(count++);
 
-    if (!m_backend->isValid()) qWarning() << "fuuu, no valid backend";
-    if (m_backend->isValid()) {
-        // Initialize a new container
-        //m_audioBin = gst_bin_new (NULL);
-        //gst_object_ref (GST_OBJECT (m_audioBin));  // boilerplate (we own this object now)
-        //gst_object_sink (GST_OBJECT (m_audioBin)); // sweet boilerplate
-
-        // We use this to leech audio data
-        //GstElement *convert = gst_element_factory_make ("audioconvert", NULL);
-        //gst_bin_add(GST_BIN (m_audioBin), convert);
-
-        // We need a queue to handle tee-connections from parent node
-        m_queue = gst_element_factory_make ("queue", NULL);
-        //gst_bin_add(GST_BIN (m_audioBin), queue);
-
-        //if (queue && convert && m_audioBin) {
-            // Link up our wonderful little path
-            //gst_bin_add_many (GST_BIN (m_audioBin), m_audioSink, (const char*)NULL);
-            //if (gst_element_link_many (queue, convert, (const char*)NULL)) {
-
-                // Add ghost sink for our audiobin
-                //GstPad *audiopad = gst_element_get_pad (queue, "sink");
-                //gst_element_add_pad (m_audioBin, gst_ghost_pad_new ("sink", audiopad));
-                //gst_object_unref(audiopad);
-
-                // add our probe
-                //GstPad *audiopad = gst_element_get_pad (m_audioTee, "src");
-                //GstPad *audiopad = gst_element_get_pad (root()->audioElement(), "src");
-                //gst_pad_add_buffer_probe (audiopad, G_CALLBACK(processBuffer), this);
-
-                // add ghost source for our audio bin
-                //gst_element_add_pad (m_audioBin, gst_ghost_pad_new ("src", audiopad));
-                //gst_object_unref (audiopad);
-                //m_isValid = true; // Initialization ok, accept input
-            //}
-            //else qWarning() << "Link many failed";
-        //}
-        //else qWarning() << "we no has all elementos";
-    }
+    m_queue = gst_element_factory_make ("queue", NULL);
     m_isValid = true;
-    //if (!m_isValid) qWarning() << Q_FUNC_INFO << ": initialization failed";
 }
 
 AudioDataOutput::~AudioDataOutput()
 {
-    //gst_object_unref(m_audioSink);
-    //gst_object_unref(m_audioBin);
+    gst_object_unref(m_queue);
 }
 
 Phonon::AudioDataOutput::Format AudioDataOutput::format() const
@@ -121,12 +81,11 @@ typedef QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > IntMap;
 inline void AudioDataOutput::convertAndEmit(const QVector<qint16> &buffer)
 {
     //TODO: Floats
-//    if (m_format == Phonon::AudioDataOutput::FloatFormat)
-//    {
-        IntMap map;
-        map.insert(Phonon::AudioDataOutput::LeftChannel, buffer);
-        map.insert(Phonon::AudioDataOutput::RightChannel, buffer);
-        emit dataReady(map);
+    IntMap map;
+    map.insert(Phonon::AudioDataOutput::LeftChannel, buffer);
+    map.insert(Phonon::AudioDataOutput::RightChannel, buffer);
+    emit dataReady(map);
+
 /*    }
     else
     {
@@ -147,7 +106,7 @@ void AudioDataOutput::processBuffer(GstPad*, GstBuffer* buffer, gpointer gThat)
     that->m_pendingData.resize(that->m_pendingData.size() + buffer->size);
 
     for (uint i=0; i<buffer->size; i++)
-        that->m_pendingData.append(buffer->data[i]*(1<<8));
+        that->m_pendingData.append(buffer->data[i] * 255);
 
     if (that->m_pendingData.size() < that->m_dataSize)
         return;
@@ -170,7 +129,7 @@ void AudioDataOutput::processBuffer(GstPad*, GstBuffer* buffer, gpointer gThat)
 
 void AudioDataOutput::mediaNodeEvent(const MediaNodeEvent *event)
 {
-    if (event->type() == MediaNodeEvent::MediaObjectConnected && root()){
+    if (event->type() == MediaNodeEvent::MediaObjectConnected && root()) {
         GstPad *audiopad = gst_element_get_pad (root()->audioElement(), "src");
         gst_pad_add_buffer_probe (audiopad, G_CALLBACK(processBuffer), this);
         gst_object_unref (audiopad);

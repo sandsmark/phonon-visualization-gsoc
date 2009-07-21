@@ -75,8 +75,6 @@ namespace Gstreamer
             void convertAndEmit(const QVector<qint16> &buffer);
 
             Phonon::AudioDataOutput::Format m_format;
-/*            GstElement *m_audioBin; // Aptly named container of GstElements
-            GstElement *m_audioSink; // Aptly named sink that gets audio */
             GstElement *m_queue;
             int m_dataSize;
             QVector<qint16> m_pendingData;

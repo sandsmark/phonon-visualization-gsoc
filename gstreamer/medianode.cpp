@@ -173,7 +173,6 @@ bool MediaNode::connectNode(QObject *obj)
             success = true;
         }
 
-
         if ((m_description & VideoSource) && (sink->m_description & VideoSink)) {
             m_videoSinkList << obj;
             MediaNodeEvent event(MediaNodeEvent::VideoSinkAdded, sink);
