@@ -72,13 +72,14 @@ namespace Gstreamer
             void endOfMedia(int remainingSamples);
 
         private:
-            void convertAndEmit(const QVector<qint16> &buffer);
+            void convertAndEmit(const QVector<qint16>&, const QVector<qint16>&);
 
             Phonon::AudioDataOutput::Format m_format;
             GstElement *m_queue;
             int m_dataSize;
             QVector<qint16> m_pendingData;
             Phonon::AudioDataOutput *m_frontend;
+            int m_channels;
     };
 }} //namespace Phonon::Gstreamer
 

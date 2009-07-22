@@ -42,11 +42,13 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
     m_name = "AudioDataOutput" + QString::number(count++);
 
     m_queue = gst_element_factory_make ("queue", NULL);
+    gst_object_ref(m_queue);
     m_isValid = true;
 }
 
 AudioDataOutput::~AudioDataOutput()
 {
+    gst_element_set_state(m_queue, GST_STATE_NULL);
     gst_object_unref(m_queue);
 }
 
@@ -67,7 +69,6 @@ int AudioDataOutput::sampleRate() const
 
 void AudioDataOutput::setFormat(Phonon::AudioDataOutput::Format)
 {
-//    m_format = format;
 }
 
 void AudioDataOutput::setDataSize(int size)
@@ -78,51 +79,56 @@ void AudioDataOutput::setDataSize(int size)
 typedef QMap<Phonon::AudioDataOutput::Channel, QVector<float> > FloatMap;
 typedef QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > IntMap;
 
-inline void AudioDataOutput::convertAndEmit(const QVector<qint16> &buffer)
+inline void AudioDataOutput::convertAndEmit(const QVector<qint16> &leftBuffer, const QVector<qint16> &rightBuffer)
 {
     //TODO: Floats
     IntMap map;
-    map.insert(Phonon::AudioDataOutput::LeftChannel, buffer);
-    map.insert(Phonon::AudioDataOutput::RightChannel, buffer);
+    map.insert(Phonon::AudioDataOutput::LeftChannel, leftBuffer);
+    map.insert(Phonon::AudioDataOutput::RightChannel, rightBuffer);
     emit dataReady(map);
-
-/*    }
-    else
-    {
-        IntMap map;
-        QVector<qint16> intBuffer(m_dataSize);
-        for (int i = 0; i < m_dataSize; ++i)
-            intBuffer[i] = static_cast<qint16>(buffer[i] * static_cast<float>(0x7FFF));
-        map.insert(Phonon::AudioDataOutput::LeftChannel, intBuffer);
-        map.insert(Phonon::AudioDataOutput::RightChannel, intBuffer);
-        emit dataReady(map);
-    }*/
 }
 
 void AudioDataOutput::processBuffer(GstPad*, GstBuffer* buffer, gpointer gThat)
 {
     // TODO emit endOfMedia
     AudioDataOutput *that = reinterpret_cast<AudioDataOutput*>(gThat);
-    that->m_pendingData.resize(that->m_pendingData.size() + buffer->size);
 
-    for (uint i=0; i<buffer->size; i++)
-        that->m_pendingData.append(buffer->data[i] * 255);
+    // determine the number of channels
+    GstStructure* structure = gst_caps_get_structure (GST_BUFFER_CAPS(buffer), 0);
+    gst_structure_get_int (structure, "channels", &that->m_channels);
 
-    if (that->m_pendingData.size() < that->m_dataSize)
+    if (that->m_channels > 2 || that->m_channels < 0) {
+        qWarning() << Q_FUNC_INFO << ": Number of channels not supported: " << that->m_channels;
         return;
+    }
 
-    if (that->m_pendingData.size() == that->m_dataSize)
-        that->convertAndEmit(that->m_pendingData);
-    else
-    {
-        QVector<qint16> intBuffer(that->m_dataSize);
-        while (that->m_pendingData.size() >= that->m_dataSize)
-        {
+    gint16 *data = reinterpret_cast<gint16*>(GST_BUFFER_DATA(buffer));
+    guint size = GST_BUFFER_SIZE(buffer) / sizeof(gint16);
+
+    that->m_pendingData.reserve(that->m_pendingData.size() + size);
+
+    for (uint i=0; i<size; i++) {
+        // 8 bit? interleaved? yay for lacking documentation!
+        that->m_pendingData.append(data[i]);
+    }
+
+    while (that->m_pendingData.size() > that->m_dataSize * that->m_channels) {
+        if (that->m_channels == 1) {
+            QVector<qint16> intBuffer(that->m_dataSize);
             memcpy(intBuffer.data(), that->m_pendingData.constData(), that->m_dataSize * sizeof(qint16));
-            that->convertAndEmit(intBuffer);
+
+            that->convertAndEmit(intBuffer, intBuffer);
             int newSize = that->m_pendingData.size() - that->m_dataSize;
             memmove(that->m_pendingData.data(), that->m_pendingData.constData() + that->m_dataSize, newSize * sizeof(qint16));
             that->m_pendingData.resize(newSize);
+        } else {
+            QVector<qint16> left(that->m_dataSize), right(that->m_dataSize);
+            for (int i=0; i<that->m_dataSize; i++) {
+                left[i] = that->m_pendingData[i*2];
+                right[i] = that->m_pendingData[i*2+1];
+            }
+            that->m_pendingData.resize(that->m_pendingData.size() - that->m_dataSize*2);
+            that->convertAndEmit(left, right);
         }
     }
 }
