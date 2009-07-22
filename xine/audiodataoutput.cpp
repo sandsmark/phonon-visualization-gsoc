@@ -39,7 +39,7 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
 {
     m_xine = Backend::xine();
 
-    // Dummy audio input port, until we get the proper one
+    // Dummy audio port, until we get the proper one
     xine_audio_port_t *port = xine_open_audio_driver(m_xine, "none", 0);
 
     // Allocate a new scope plugin
@@ -191,13 +191,8 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
     // Get the number of samples (audio frames * audio channels)
     int samples = buf->num_frames * that->m_channels;
 
-    // Store the audio data in a QVector
-    QVector<qint16> buffer(samples);
-    for (int i=0; i<samples; ++i)
-        buffer[i] = buf->mem[i];
-
     // Present the audio data to our frontend
-    that->m_frontend->packetReady(buffer);
+    that->m_frontend->packetReady(samples, buf->mem);
 
     /* Send the audio buffer back to the original port.
        This notifies Xine that we have finished processing
@@ -221,14 +216,18 @@ AudioDataOutput::~AudioDataOutput()
     delete xt;
 }
 
-inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
+inline void AudioDataOutput::packetReady(const int samples, const qint16 *buffer)
 {
     //TODO: support floats, we currently only handle ints
     if (m_format == Phonon::AudioDataOutput::FloatFormat)
         return;
 
-    // Add the new audio data to our pool
-    m_pendingData += buffer;
+    // Tell the QVector how much data we're expecting, speeds things up a bit
+    m_pendingData.reserve(m_pendingData.size() + samples);
+
+    // Add the data to our QVector
+    for (int i=0; i<samples; ++i)
+        m_pendingData.append(buffer[i]);
 
     // While we have enough audio data for one signal
     while (m_pendingData.size() / m_channels > dataSize())
@@ -239,10 +238,13 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
            into both channels in the QMap */
         if (m_channels==1)
         {
-            QVector<qint16> data = m_pendingData.mid(0, dataSize());
-            m_pendingData.remove(0, dataSize());
-            map.insert(Phonon::AudioDataOutput::LeftChannel, data);
-            map.insert(Phonon::AudioDataOutput::RightChannel, data);
+            QVector<qint16> intBuffer(dataSize());
+
+            memcpy(intBuffer.data(), m_pendingData.constData(), dataSize() * sizeof(qint16));
+            m_pendingData.resize(m_pendingData.size() - m_dataSize);
+
+            map.insert(Phonon::AudioDataOutput::LeftChannel, intBuffer);
+            map.insert(Phonon::AudioDataOutput::RightChannel, intBuffer);
             emit dataReady(map);
         }
         else if (m_channels==2)
@@ -251,14 +253,18 @@ inline void AudioDataOutput::packetReady(const QVector<qint16> buffer)
 
             /* Copy out the interleaved data into the
                appropriate channels.
-               This isn't very optimal. */
+               This isn't very optimal.
+               Especially since most analyzers and
+               visualizations just want one channel. */
+
             for (int i=0; i < dataSize()*2; i+=2)
             {
                 left.append(m_pendingData[i]);
                 right.append(m_pendingData[i+1]);
             }
+
             // Remove the data we just copied out
-            m_pendingData.remove(0, dataSize() * 2);
+            m_pendingData.resize(m_pendingData.size() - dataSize()*2);
 
             // Insert into the map, and emit
             map.insert(Phonon::AudioDataOutput::LeftChannel, left);

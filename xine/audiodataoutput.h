@@ -46,7 +46,6 @@ namespace Phonon
 {
 namespace Xine
 {
-
 class AudioDataOutputXT;
 class AudioDataOutput;
 
@@ -87,6 +86,9 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
 
 }; // class AudioDataOutputXT
 
+/**
+ * \author Martin Sandsmark <sandsmark@samfundet.no>
+ */
 class AudioDataOutput : public QObject,
                         public Phonon::Xine::SinkNode,
                         public Phonon::Xine::SourceNode,
@@ -127,7 +129,7 @@ class AudioDataOutput : public QObject,
         void endOfMedia(int remainingSamples);
 
     private:
-        void packetReady(QVector<qint16> buffer);
+        void packetReady(const int samples, const qint16 *buffer);
 
         int m_channels;
         int m_dataSize;
