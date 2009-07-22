@@ -43,7 +43,7 @@ struct XineEngineData : public QSharedData
 class XineEngine
 {
     public:
-        inline operator xine_t *() const { Q_ASSERT(d.data()); Q_ASSERT(d->m_xine); return d->m_xine; }
+        inline operator xine_t *() const { Q_ASSERT(d.data() && d->m_xine); return d->m_xine; }
         inline operator bool() const { return d; }
         inline bool operator==(const XineEngine &rhs) const { return d == rhs.d; }
         inline bool operator!=(const XineEngine &rhs) const { return d != rhs.d; }

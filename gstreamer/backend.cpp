@@ -130,6 +130,7 @@ QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const
             QWidget *widget =  qobject_cast<QWidget*>(parent);
             return new VideoWidget(this, widget);
         }
+
     case VolumeFaderEffectClass:
         return new VolumeFaderEffect(this, parent);
 
@@ -304,7 +305,6 @@ bool Backend::startConnectionChange(QSet<QObject *> objects)
 {
     foreach (QObject *object, objects) {
         MediaNode *sourceNode = qobject_cast<MediaNode *>(object);
-        Q_ASSERT(sourceNode);
         MediaObject *media = sourceNode->root();
         if (media) {
             media->saveState();

@@ -343,6 +343,7 @@ bool PathPrivate::executeTransaction( const QList<QObjectPair> &disconnections, 
                 Q_ASSERT(success); //a failure here means it is impossible to reestablish the connection
                 Q_UNUSED(success);
             }
+
             return false;
 
         }

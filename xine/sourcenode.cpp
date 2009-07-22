@@ -30,7 +30,7 @@ namespace Xine
 {
 
 SourceNodeXT::SourceNodeXT(const char *name)
-    : className(name), deleted(false), m_audioOutput(0)
+    : className(name), deleted(false)
 {
 }
 
@@ -71,28 +71,12 @@ SourceNode::~SourceNode()
 void SourceNode::addSink(SinkNode *s)
 {
     Q_ASSERT(!m_sinks.contains(s));
-
-    SinkNodeXT *s_xt = s->threadSafeObject().data();
-
-    AudioOutputXT *ao = dynamic_cast<AudioOutputXT*>(s_xt);
-    if (ao) {
-        m_threadSafeObject->setAudioOutput(ao);
-    }
-
     m_sinks << s;
 }
 
 void SourceNode::removeSink(SinkNode *s)
 {
     Q_ASSERT(m_sinks.contains(s));
-    SinkNodeXT *s_xt = s->threadSafeObject().data();
-    
-    AudioOutputXT *ao = dynamic_cast<AudioOutputXT*>(s_xt);
-    if (ao) {
-        if (m_threadSafeObject->audioOutput() == ao)
-            m_threadSafeObject->setAudioOutput(0);
-    }
-
     m_sinks.remove(s);
 }
 

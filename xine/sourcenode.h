@@ -37,7 +37,6 @@ namespace Xine
 class SinkNode;
 class Event;
 class SinkNodeXT;
-class AudioOutputXT;
 
 class SourceNodeXT : virtual public SharedData
 {
@@ -48,9 +47,6 @@ class SourceNodeXT : virtual public SharedData
         virtual xine_post_out_t *videoOutputPort() const;
         void assert() { Q_ASSERT(!deleted); }
 
-        AudioOutputXT *audioOutput() { return m_audioOutput; };
-        void setAudioOutput(AudioOutputXT *ao) { m_audioOutput = ao; };
-
         const char *const className;
 
     private:
@@ -60,8 +56,6 @@ class SourceNodeXT : virtual public SharedData
 
         // hold a ref to the sink that we're connected to to make 100% sure it's always valid
         QExplicitlySharedDataPointer<SinkNodeXT> m_xtSink;
-
-        AudioOutputXT *m_audioOutput;
 };
 
 class SourceNode

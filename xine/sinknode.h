@@ -76,8 +76,6 @@ class SinkNode
         inline QExplicitlySharedDataPointer<SinkNodeXT> threadSafeObject() const { return m_threadSafeObject; }
 
     protected:
-        friend class SourceNode;
-
         virtual void xineEngineChanged() {}
         virtual void aboutToChangeXineEngine() {}
 

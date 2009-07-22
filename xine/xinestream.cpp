@@ -1205,9 +1205,9 @@ bool XineStream::event(QEvent *ev)
                 default:
                     return true;
                 }
-		    RequestSnapshotEvent *event=static_cast<RequestSnapshotEvent*>(ev);
-		    event->image=qimg;
-		    event->waitCondition->wakeAll();
+                    RequestSnapshotEvent *event=static_cast<RequestSnapshotEvent*>(ev);
+                    event->image=qimg;
+                    event->waitCondition->wakeAll();
 //                 handleDownstreamEvent(new SnapshotReadyEvent(qimg));
             }
         }
@@ -1686,7 +1686,6 @@ xine_post_out_t *XineStream::audioOutputPort() const
 {
     Q_ASSERT(QThread::currentThread() == XineThread::instance());
     if (!m_stream) {
-        debug() << Q_FUNC_INFO << "No stream!";
         return 0;
     }
     return xine_get_audio_source(m_stream);

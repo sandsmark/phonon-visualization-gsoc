@@ -181,7 +181,6 @@ QObject *Backend::createObject(BackendInterface::Class c, QObject *parent, const
             return 0;
         }
     }
-    qWarning() << Q_FUNC_INFO << " Unhandled class!";
     return 0;
 }
 
@@ -352,12 +351,10 @@ bool Backend::startConnectionChange(QSet<QObject *> nodes)
 
 bool Backend::connectNodes(QObject *_source, QObject *_sink)
 {
-    debug() << Q_FUNC_INFO << _source->metaObject()->className() << "->" << _sink->metaObject()->className();
+    debug() << Q_FUNC_INFO << _source << "->" << _sink;
     SourceNode *source = qobject_cast<SourceNode *>(_source);
     SinkNode *sink = qobject_cast<SinkNode *>(_sink);
     if (!source || !sink) {
-        if (!source) qWarning() << Q_FUNC_INFO << "No source!";
-        else qWarning() << Q_FUNC_INFO << "No sink!";
         return false;
     }
     debug() << Q_FUNC_INFO << source->threadSafeObject().data() << "->" << sink->threadSafeObject().data();
@@ -366,27 +363,25 @@ bool Backend::connectNodes(QObject *_source, QObject *_sink)
     if (sink->source() != 0 || source->sinks().contains(sink)) {
         return false;
     }
-    if (QString(_sink->metaObject()->className()) != "Phonon::Xine::AudioDataOutput") {
-        NullSink *nullSink = 0;
-        foreach (SinkNode *otherSinks, source->sinks()) {
-            if (otherSinks->inputMediaStreamTypes() & types) {
-                if (nullSink) {
+    NullSink *nullSink = 0;
+    foreach (SinkNode *otherSinks, source->sinks()) {
+        if (otherSinks->inputMediaStreamTypes() & types) {
+            if (nullSink) {
+                qWarning() << "phonon-xine does not support splitting of audio or video streams into multiple outputs. The sink node is already connected to" << otherSinks->threadSafeObject().data();
+                return false;
+            } else {
+                nullSink = dynamic_cast<NullSink *>(otherSinks);
+                if (!nullSink) {
                     qWarning() << "phonon-xine does not support splitting of audio or video streams into multiple outputs. The sink node is already connected to" << otherSinks->threadSafeObject().data();
                     return false;
-                } else {
-                    nullSink = dynamic_cast<NullSink *>(otherSinks);
-                    if (!nullSink) {
-                        qWarning() << "phonon-xine does not support splitting of audio or video streams into multiple outputs. The sink node is already connected to" << otherSinks->threadSafeObject().data();
-                        return false;
-                    }
                 }
             }
         }
-        if (nullSink) {
-            m_disconnections << WireCall(source, nullSink);
-            source->removeSink(nullSink);
-            nullSink->unsetSource(source);
-        }
+    }
+    if (nullSink) {
+        m_disconnections << WireCall(source, nullSink);
+        source->removeSink(nullSink);
+        nullSink->unsetSource(source);
     }
     source->addSink(sink);
     sink->setSource(source);
