@@ -66,6 +66,7 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
 
 AudioDataOutputXT::~AudioDataOutputXT()
 {
+    xine_post_dispose(m_xine, &((post_plugin_t*)m_plugin)->xine_post);
     delete m_plugin;
 }
 
