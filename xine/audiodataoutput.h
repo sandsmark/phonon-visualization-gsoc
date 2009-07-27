@@ -145,7 +145,7 @@ class AudioDataOutput : public QObject,
         int                           m_channels;
         int                           m_dataSize;
         int                         m_sampleRate;
-        QLinkedList<Frame>       m_pendingFrames;
+        QList<Frame>       m_pendingFrames;
         Phonon::AudioDataOutput::Format m_format;
         bool                        m_keepInSync;
         MediaObject               *m_mediaObject;

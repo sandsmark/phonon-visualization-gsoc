@@ -258,10 +258,16 @@ inline void AudioDataOutput::packetReady(const int samples, const qint16 *buffer
 
     // Are we supposed to keep our signals in sync?
     if (m_keepInSync) {
-        while (m_mediaObject && !m_pendingFrames.isEmpty() &&
-               m_pendingFrames.last().timestamp < m_mediaObject->stream()->currentVpts() &&
-               m_pendingFrames.last().map[Phonon::AudioDataOutput::LeftChannel].size() >= m_dataSize) {
-            emit dataReady(m_pendingFrames.takeLast().map);
+        /*while (m_mediaObject && !m_pendingFrames.isEmpty() &&
+               m_pendingFrames.first().timestamp < m_mediaObject->stream()->currentVpts() &&
+               m_pendingFrames.first().map[Phonon::AudioDataOutput::LeftChannel].size() >= m_dataSize) {
+            emit dataReady(m_pendingFrames.takeFirst().map);
+        }*/
+        for (int i=0; i<m_pendingFrames.size(); i++) {
+            if (m_pendingFrames[i].timestamp < m_mediaObject->stream()->currentVpts() &&
+                m_pendingFrames[i].map[Phonon::AudioDataOutput::LeftChannel].size() >= m_dataSize) {
+                emit dataReady(m_pendingFrames.takeAt(i).map);
+            }
         }
     } else { // Fire at will, as long as there is enough data
         while (!m_pendingFrames.isEmpty() &&
