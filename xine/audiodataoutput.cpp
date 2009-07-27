@@ -34,7 +34,8 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
                     SinkNodeXT("AudioDataOutput"),
                     SourceNodeXT("AudioDataOutput"),
                     m_frontend(output),
-                    m_audioPort(0)
+                    m_audioPort(0),
+                    m_postOutput(0)
 {
     m_xine = Backend::xine();
 
@@ -93,6 +94,7 @@ void AudioDataOutputXT::rewireTo(SourceNodeXT *source)
         return;
     }
     m_postOutput = source->audioOutputPort();
+    m_xtSink->rewireTo(source);
 
     // Make sure things went okay
     source->assert();
@@ -234,7 +236,7 @@ inline void AudioDataOutput::packetReady(const int samples, const qint16 *buffer
     if (m_channels < 0 || m_channels > 2)
         return;
 
-
+    // Check if it has been cleared
     if (m_pendingFrames.isEmpty())
         m_pendingFrames.append(Frame());
 
