@@ -32,6 +32,8 @@
 #include <phonon/audiodataoutput.h>
 #include <phonon/audiodataoutputinterface.h>
 
+#include <QLinkedList>
+
 extern "C" {
     #define this xine_this //HACK; Xine uses “this” as a name for certain variables
     #define XINE_ENGINE_INTERNAL // We need the port_ticket
@@ -57,6 +59,14 @@ typedef struct
     AudioDataOutputXT *audioDataOutput;
 } scope_plugin_t;
 
+
+// Struct for storing an audio frame with timestamp
+typedef struct
+{
+    QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > map;
+    qint64 timestamp;
+} Frame;
+
 class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
 {
     public:
@@ -66,7 +76,7 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
         xine_post_out_t *audioOutputPort() const;
         xine_audio_port_t *audioPort() const { return m_audioPort; }
 
-        void intercept(xine_audio_port_t*);
+        void intercept(xine_audio_port_t*, bool isNull = false);
 
         //callback functions
         static int  openPort(xine_audio_port_t*, xine_stream_t*, uint32_t, uint32_t, int);
@@ -83,6 +93,7 @@ class AudioDataOutputXT : public SinkNodeXT, public SourceNodeXT
         scope_plugin_t       *m_plugin;
         int                 m_channels;
         xine_post_out_t  *m_postOutput;
+        int64_t            m_firstVpts;
 
 }; // class AudioDataOutputXT
 
@@ -120,8 +131,8 @@ class AudioDataOutput : public QObject,
     public slots:
         //Setters
         void setFrontendObject(Phonon::AudioDataOutput *frontend) { m_frontend = frontend; }
-        void setChannels(int channels) { m_channels = channels; m_pendingData.clear(); }
-        void setDataSize(int ds) { m_dataSize = ds; }
+        void setChannels(int channels) { m_channels = channels; m_pendingFrames.clear(); }
+        void setDataSize(int ds) { m_dataSize = ds; m_pendingFrames.clear(); }
 
     signals:
         void dataReady(const QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > &data);
@@ -129,13 +140,15 @@ class AudioDataOutput : public QObject,
         void endOfMedia(int remainingSamples);
 
     private:
-        void packetReady(const int samples, const qint16 *buffer);
+        void packetReady(const int samples, const qint16 *buffer, const qint64 vpts);
 
-        int m_channels;
-        int m_dataSize;
-        int m_sampleRate;
-        QVector<qint16> m_pendingData;
+        int                           m_channels;
+        int                           m_dataSize;
+        int                         m_sampleRate;
+        QLinkedList<Frame>       m_pendingFrames;
         Phonon::AudioDataOutput::Format m_format;
+        bool                        m_keepInSync;
+        MediaObject               *m_mediaObject;
 
 }; //class AudioDataOutput
 

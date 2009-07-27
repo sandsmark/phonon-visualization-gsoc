@@ -35,9 +35,10 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
                     SourceNodeXT("AudioDataOutput"),
                     m_frontend(output),
                     m_audioPort(0)
-
 {
     m_xine = Backend::xine();
+
+    m_firstVpts = -1;
 
     // Dummy audio port, until we get the proper one
     xine_audio_port_t *port = xine_open_audio_driver(m_xine, "none", 0);
@@ -52,7 +53,7 @@ AudioDataOutputXT::AudioDataOutputXT(AudioDataOutput *output) :
     _x_post_init(post_plugin, 1, 0);
 
     // Intercept the null audio port (until we get the proper one)
-    intercept(port);
+    intercept(port, true);
 
     /* code is straight from xine_init_post()
        can't use that function as it only dlopens the plugins
@@ -105,7 +106,7 @@ xine_post_out_t *AudioDataOutputXT::audioOutputPort() const
 }
 
 /// Intercepts a given Xine audio port (called from AudioOutput)
-void AudioDataOutputXT::intercept(xine_audio_port_t *p)
+void AudioDataOutputXT::intercept(xine_audio_port_t *p, bool isNull)
 {
     if (p == m_audioPort) // we're already intercepting this one
         return;
@@ -140,6 +141,11 @@ void AudioDataOutputXT::intercept(xine_audio_port_t *p)
     // Wire in the port input into our post plugin
     post_plugin->xine_post.audio_input[0] = &port->new_port;
     post_plugin->xine_post.type = PLUGIN_POST;
+
+    if (isNull)
+        m_frontend->m_keepInSync = false;
+    else
+        m_frontend->m_keepInSync = true;
 }
 
 /// Callback function, opens the xine port
@@ -193,7 +199,7 @@ void AudioDataOutputXT::putBufferCallback(xine_audio_port_t * port_gen, audio_bu
     int samples = buf->num_frames * that->m_channels;
 
     // Present the audio data to our frontend
-    that->m_frontend->packetReady(samples, buf->mem);
+    that->m_frontend->packetReady(samples, buf->mem, buf->vpts);
 
     /* Send the audio buffer back to the original port.
        This notifies Xine that we have finished processing
@@ -208,7 +214,9 @@ AudioDataOutput::AudioDataOutput(QObject*)
 : SinkNode(new AudioDataOutputXT(this))
 , SourceNode(static_cast<AudioDataOutputXT *>(SinkNode::m_threadSafeObject.data()))
 , m_format(Phonon::AudioDataOutput::IntegerFormat)
+, m_mediaObject(0)
 {
+    m_keepInSync = false;
 }
 
 AudioDataOutput::~AudioDataOutput()
@@ -217,61 +225,46 @@ AudioDataOutput::~AudioDataOutput()
     delete xt;
 }
 
-inline void AudioDataOutput::packetReady(const int samples, const qint16 *buffer)
+inline void AudioDataOutput::packetReady(const int samples, const qint16 *buffer, const qint64 vpts)
 {
     //TODO: support floats, we currently only handle ints
     if (m_format == Phonon::AudioDataOutput::FloatFormat)
         return;
 
-    // Tell the QVector how much data we're expecting, speeds things up a bit
-    m_pendingData.reserve(m_pendingData.size() + samples);
+    if (m_channels < 0 || m_channels > 2)
+        return;
 
-    // Add the data to our QVector
-    for (int i=0; i<samples; ++i)
-        m_pendingData.append(buffer[i]);
 
-    // While we have enough audio data for one signal
-    while (m_pendingData.size() / m_channels > dataSize())
-    {
-        QMap<Phonon::AudioDataOutput::Channel, QVector<qint16> > map;
+    if (m_pendingFrames.isEmpty())
+        m_pendingFrames.append(Frame());
 
-        /* If there's only one channel, we duplicate the data
-           into both channels in the QMap */
-        if (m_channels==1)
-        {
-            QVector<qint16> intBuffer(dataSize());
+    for (int i=0; i<samples; i++) {
+        if (m_pendingFrames.first().map[Phonon::AudioDataOutput::LeftChannel].size() >= m_dataSize) {
+            m_pendingFrames.prepend(Frame());
+            m_pendingFrames.first().timestamp = vpts;
 
-            memcpy(intBuffer.data(), m_pendingData.constData(), dataSize() * sizeof(qint16));
-            m_pendingData.resize(m_pendingData.size() - m_dataSize);
-
-            map.insert(Phonon::AudioDataOutput::LeftChannel, intBuffer);
-            map.insert(Phonon::AudioDataOutput::RightChannel, intBuffer);
-            emit dataReady(map);
+            // Tell the QVector how much data we're expecting, speeds things up a bit
+            m_pendingFrames.first().map[Phonon::AudioDataOutput::LeftChannel].reserve(m_dataSize);
+            if (m_channels == 2)
+                m_pendingFrames.first().map[Phonon::AudioDataOutput::RightChannel].reserve(m_dataSize);
         }
-        else if (m_channels==2)
-        {
-            QVector<qint16> left, right;
 
-            /* Copy out the interleaved data into the
-               appropriate channels.
-               This isn't very optimal.
-               Especially since most analyzers and
-               visualizations just want one channel. */
+        m_pendingFrames.first().map[Phonon::AudioDataOutput::LeftChannel].append(buffer[i]);
+        if (m_channels == 2)
+            m_pendingFrames.first().map[Phonon::AudioDataOutput::RightChannel].append(buffer[i++]);
+    }
 
-            for (int i=0; i < dataSize()*2; i+=2)
-            {
-                left.append(m_pendingData[i]);
-                right.append(m_pendingData[i+1]);
-            }
-
-            // Remove the data we just copied out
-            m_pendingData.resize(m_pendingData.size() - dataSize()*2);
-
-            // Insert into the map, and emit
-            map.insert(Phonon::AudioDataOutput::LeftChannel, left);
-            map.insert(Phonon::AudioDataOutput::RightChannel, right);
-            emit dataReady(map);
+    // Are we supposed to keep our signals in sync?
+    if (m_keepInSync) {
+        while (m_mediaObject && !m_pendingFrames.isEmpty() &&
+               m_pendingFrames.last().timestamp < m_mediaObject->stream()->currentVpts() &&
+               m_pendingFrames.last().map[Phonon::AudioDataOutput::LeftChannel].size() >= m_dataSize) {
+            emit dataReady(m_pendingFrames.takeLast().map);
         }
+    } else { // Fire at will, as long as there is enough data
+        while (!m_pendingFrames.isEmpty() &&
+               m_pendingFrames.last().map[Phonon::AudioDataOutput::LeftChannel].size() >= m_dataSize)
+            emit dataReady(m_pendingFrames.takeLast().map);
     }
 }
 
@@ -281,9 +274,11 @@ void AudioDataOutput::upstreamEvent(Event *e)
     Q_ASSERT(e);
     if (e->type() == Event::IsThereAXineEngineForMe) {
         // yes there is
-        MediaObject *mediaObject = dynamic_cast<MediaObject*>(m_source);
-        if (mediaObject)
+        MediaObject *mediaObject = dynamic_cast<MediaObject*>(m_source); //TODO; qobject_cast?
+        if (mediaObject) {
             SourceNode::downstreamEvent(new HeresYourXineStreamEvent(mediaObject->stream()));
+            m_mediaObject = mediaObject;
+        }
     } else
         SourceNode::upstreamEvent(e);
 }
