@@ -41,7 +41,7 @@ AudioDataOutput::AudioDataOutput(Backend *backend, QObject *parent)
     static int count = 0;
     m_name = "AudioDataOutput" + QString::number(count++);
 
-    m_queue = gst_element_factory_make ("queue", NULL);
+    m_queue = gst_element_factory_make ("identity", NULL);
     gst_object_ref(m_queue);
     m_isValid = true;
 }
@@ -137,10 +137,20 @@ void AudioDataOutput::mediaNodeEvent(const MediaNodeEvent *event)
 {
     if (event->type() == MediaNodeEvent::MediaObjectConnected && root()) {
         g_object_set(G_OBJECT(audioElement()), "sync", true, (const char*)NULL);
+        // Add in our probe
         GstPad *audiopad = gst_element_get_pad (audioElement(), "src");
         gst_pad_add_buffer_probe (audiopad, G_CALLBACK(processBuffer), this);
         gst_object_unref (audiopad);
         return;
+    } else if (event->type() == MediaNodeEvent::AudioSinkAdded) {
+        /* Tell the gstreamer element that it should
+           sync the data it gives us to what is currently
+           playing, if there's an audio sink connected to us */
+        qWarning() << "setting sync to true";
+        g_object_set(G_OBJECT(audioElement()), "sync", true, (const char*)NULL);
+    } else if (event->type() == MediaNodeEvent::AudioSinkRemoved) {
+        // If there isn't an audio sink connected to us, assume that we shouldn't sync
+        g_object_set(G_OBJECT(audioElement()), "sync", false, (const char*)NULL);
     }
 
     MediaNode::mediaNodeEvent(event);
