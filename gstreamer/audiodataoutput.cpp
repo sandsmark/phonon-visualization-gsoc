@@ -136,7 +136,8 @@ void AudioDataOutput::processBuffer(GstPad*, GstBuffer* buffer, gpointer gThat)
 void AudioDataOutput::mediaNodeEvent(const MediaNodeEvent *event)
 {
     if (event->type() == MediaNodeEvent::MediaObjectConnected && root()) {
-        GstPad *audiopad = gst_element_get_pad (root()->audioElement(), "src");
+        g_object_set(G_OBJECT(audioElement()), "sync", true, (const char*)NULL);
+        GstPad *audiopad = gst_element_get_pad (audioElement(), "src");
         gst_pad_add_buffer_probe (audiopad, G_CALLBACK(processBuffer), this);
         gst_object_unref (audiopad);
         return;
